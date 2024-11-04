@@ -80,6 +80,11 @@ fn main() {
     while !status_bar.exit {
         event_loop.dispatch(None, &mut status_bar).unwrap();
         status_bar.render();
+        println!(
+            "x: {}, y: {}",
+            status_bar.seat.unwrap().pointer.unwrap().x,
+            status_bar.seat.unwrap().pointer.unwrap().y
+        );
     }
 }
 
