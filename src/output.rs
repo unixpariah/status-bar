@@ -5,8 +5,111 @@ use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle,
 };
-use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1;
-use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1;
+use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_v1;
+use wayland_protocols_wlr::layer_shell::v1::client::{
+    zwlr_layer_shell_v1::{self, Layer},
+    zwlr_layer_surface_v1::{self, Anchor},
+};
+
+enum Position {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+#[derive(Default)]
+struct Margin {
+    left: u32,
+    right: u32,
+    top: u32,
+    bottom: u32,
+}
+
+struct Config {
+    size: u32,
+    margin: Margin,
+    position: Position,
+    layer: zwlr_layer_shell_v1::Layer,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            size: 50,
+            margin: Margin::default(),
+            position: Position::Top,
+            layer: Layer::Top,
+        }
+    }
+}
+
+impl Config {
+    fn apply(
+        &self,
+        layer_surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+        width: u32,
+        height: u32,
+    ) {
+        let width = match self.position {
+            Position::Bottom | Position::Top => width,
+            Position::Right | Position::Left => self.size,
+        };
+
+        let height = match self.position {
+            Position::Bottom | Position::Top => self.size,
+            Position::Right | Position::Left => height,
+        };
+
+        match self.position {
+            Position::Top => {
+                layer_surface.set_anchor(Anchor::Top | Anchor::Left | Anchor::Right);
+                layer_surface.set_exclusive_zone(height as i32);
+
+                layer_surface.set_size(
+                    width as u32 - self.margin.left - self.margin.right,
+                    self.size,
+                );
+            }
+            Position::Left => {
+                layer_surface.set_anchor(Anchor::Top | Anchor::Left | Anchor::Bottom);
+                layer_surface.set_exclusive_zone(width as i32);
+
+                layer_surface.set_size(
+                    self.size,
+                    height as u32 - self.margin.top - self.margin.bottom,
+                );
+            }
+            Position::Right => {
+                layer_surface.set_anchor(Anchor::Top | Anchor::Right | Anchor::Bottom);
+                layer_surface.set_exclusive_zone(width as i32);
+
+                layer_surface.set_size(
+                    self.size,
+                    height as u32 - self.margin.top - self.margin.bottom,
+                );
+            }
+            Position::Bottom => {
+                layer_surface.set_anchor(Anchor::Bottom | Anchor::Left | Anchor::Right);
+                layer_surface.set_exclusive_zone(height as i32);
+
+                layer_surface.set_size(
+                    width as u32 - self.margin.left - self.margin.right,
+                    self.size,
+                );
+            }
+        }
+
+        layer_surface.set_layer(self.layer);
+
+        layer_surface.set_margin(
+            self.margin.top as i32,
+            self.margin.right as i32,
+            self.margin.bottom as i32,
+            self.margin.left as i32,
+        );
+    }
+}
 
 pub struct Output {
     adapter: wgpu::Adapter,
@@ -16,13 +119,18 @@ pub struct Output {
     layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     wl_surface: wl_surface::WlSurface,
     output: wl_output::WlOutput,
+    xdg_output: zxdg_output_v1::ZxdgOutputV1,
+    pub info: OutputInfo,
+    config: Config,
 }
 
 impl Output {
     pub fn new(
         output: wl_output::WlOutput,
+        xdg_output: zxdg_output_v1::ZxdgOutputV1,
         wl_surface: wl_surface::WlSurface,
         layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+        id: u32,
         instance: &wgpu::Instance,
         raw_display_handle: RawDisplayHandle,
     ) -> Self {
@@ -49,6 +157,8 @@ impl Output {
             .expect("Failed to request device");
 
         Self {
+            config: Config::default(),
+            xdg_output,
             output,
             adapter,
             device,
@@ -56,31 +166,78 @@ impl Output {
             surface,
             layer_surface,
             wl_surface,
+            info: OutputInfo::new(id),
         }
     }
 }
 
-impl Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()> for Wgpu {
+pub struct OutputInfo {
+    name: String,
+    width: i32,
+    height: i32,
+    scale: i32,
+    pub id: u32,
+}
+
+impl OutputInfo {
+    fn new(id: u32) -> Self {
+        Self {
+            name: "".to_string(),
+            width: 0,
+            height: 0,
+            scale: 1,
+            id,
+        }
+    }
+}
+
+impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for Wgpu {
     fn event(
-        _state: &mut Self,
-        _proxy: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
-        _event: <zxdg_output_manager_v1::ZxdgOutputManagerV1 as wayland_client::Proxy>::Event,
+        state: &mut Self,
+        xdg_output: &zxdg_output_v1::ZxdgOutputV1,
+        event: zxdg_output_v1::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &QueueHandle<Self>,
     ) {
+        let output = state
+            .outputs
+            .iter_mut()
+            .find(|output| output.xdg_output == *xdg_output)
+            .unwrap();
+
+        match event {
+            zxdg_output_v1::Event::Name { name } => output.info.name = name,
+            zxdg_output_v1::Event::LogicalSize { width, height } => {
+                output.info.width = width;
+                output.info.height = height;
+            }
+            _ => {}
+        }
     }
 }
 
 impl Dispatch<wl_output::WlOutput, ()> for Wgpu {
     fn event(
-        _state: &mut Self,
-        _proxy: &wl_output::WlOutput,
-        _event: <wl_output::WlOutput as wayland_client::Proxy>::Event,
+        state: &mut Self,
+        wl_output: &wl_output::WlOutput,
+        event: wl_output::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &QueueHandle<Self>,
     ) {
+        let output = state
+            .outputs
+            .iter_mut()
+            .find(|output| output.output == *wl_output)
+            .unwrap();
+
+        match event {
+            wl_output::Event::Scale { factor } => {
+                output.info.scale = factor;
+            }
+            _ => {}
+        }
     }
 }
 
@@ -88,7 +245,7 @@ impl Dispatch<wl_surface::WlSurface, ()> for Wgpu {
     fn event(
         _state: &mut Self,
         _proxy: &wl_surface::WlSurface,
-        _event: <wl_surface::WlSurface as wayland_client::Proxy>::Event,
+        _event: wl_surface::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &QueueHandle<Self>,
@@ -107,7 +264,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for Wgpu {
     ) {
         let output = state
             .outputs
-            .iter()
+            .iter_mut()
             .find(|output| output.layer_surface == *layer_surface)
             .unwrap();
 
@@ -119,38 +276,32 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for Wgpu {
             } => {
                 output.layer_surface.ack_configure(serial);
 
-                state.width = width;
-                state.height = height;
+                output.config.apply(&layer_surface, width, height);
 
-                let adapter = &output.adapter;
-                let surface = &output.surface;
-                let device = &output.device;
-                let queue = &output.queue;
-
-                let cap = surface.get_capabilities(&adapter);
+                let cap = output.surface.get_capabilities(&output.adapter);
                 let surface_config = wgpu::SurfaceConfiguration {
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                     format: cap.formats[0],
                     view_formats: vec![cap.formats[0]],
                     alpha_mode: wgpu::CompositeAlphaMode::Auto,
-                    width: state.width,
-                    height: state.height,
+                    width,
+                    height,
                     desired_maximum_frame_latency: 2,
-                    // Wayland is inherently a mailbox system.
                     present_mode: wgpu::PresentMode::Mailbox,
                 };
 
-                surface.configure(&output.device, &surface_config);
+                output.surface.configure(&output.device, &surface_config);
 
                 // We don't plan to render much in this example, just clear the surface.
-                let surface_texture = surface
+                let surface_texture = output
+                    .surface
                     .get_current_texture()
                     .expect("failed to acquire next swapchain texture");
                 let texture_view = surface_texture
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                let mut encoder = device.create_command_encoder(&Default::default());
+                let mut encoder = output.device.create_command_encoder(&Default::default());
                 {
                     let _renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: None,
@@ -169,7 +320,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for Wgpu {
                 }
 
                 // Submit the command in the queue to execute
-                queue.submit(Some(encoder.finish()));
+                output.queue.submit(Some(encoder.finish()));
                 surface_texture.present();
             }
             _ => {}

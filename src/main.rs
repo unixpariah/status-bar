@@ -3,7 +3,8 @@ mod output;
 use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
 use std::ptr::NonNull;
 use wayland_client::{
-    protocol::{wl_compositor, wl_output, wl_registry, wl_surface},
+    delegate_noop,
+    protocol::{wl_compositor, wl_output, wl_registry},
     Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1;
@@ -17,8 +18,6 @@ struct Wgpu {
     compositor: Option<wl_compositor::WlCompositor>,
     layer_shell: Option<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
     exit: bool,
-    width: u32,
-    height: u32,
     instance: wgpu::Instance,
     raw_display_handle: RawDisplayHandle,
     outputs: Vec<output::Output>,
@@ -40,8 +39,6 @@ impl Wgpu {
             output_manager: None,
             layer_shell: None,
             exit: false,
-            width: 1920,
-            height: 50,
             instance,
             raw_display_handle,
             outputs: Vec::new(),
@@ -50,7 +47,7 @@ impl Wgpu {
 }
 
 fn main() {
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = Connection::connect_to_env().expect("Connection to wayland failed");
     let display = conn.display();
 
     let mut event_queue = conn.new_event_queue();
@@ -62,7 +59,9 @@ fn main() {
     _ = display.get_registry(&qh, ());
 
     while !wgpu.exit {
-        event_queue.blocking_dispatch(&mut wgpu).unwrap();
+        event_queue
+            .blocking_dispatch(&mut wgpu)
+            .expect("Failed to dispatch event queue");
     }
 }
 
@@ -122,47 +121,46 @@ impl Dispatch<wl_registry::WlRegistry, ()> for Wgpu {
                         qh,
                         (),
                     );
+                    layer_surface.set_size(1, 1);
                     layer_surface.set_anchor(Anchor::Top);
-                    layer_surface.set_size(state.width, state.height);
-                    layer_surface.set_exclusive_zone(state.height as i32);
                     surface.commit();
+
+                    let xdg_output =
+                        state
+                            .output_manager
+                            .as_ref()
+                            .unwrap()
+                            .get_xdg_output(&output, qh, ());
 
                     state.outputs.push(output::Output::new(
                         output,
+                        xdg_output,
                         surface,
                         layer_surface,
+                        name,
                         &state.instance,
                         state.raw_display_handle,
                     ));
                 }
                 _ => {}
             },
-            wl_registry::Event::GlobalRemove { name: _ } => {}
+            wl_registry::Event::GlobalRemove { name } => {
+                let index = state
+                    .outputs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, output)| output.info.id == name)
+                    .map(|(index, _)| index);
+
+                if let Some(index) = index {
+                    state.outputs.swap_remove(index);
+                }
+            }
             _ => unreachable!(),
         }
     }
 }
 
-impl Dispatch<wl_compositor::WlCompositor, ()> for Wgpu {
-    fn event(
-        _state: &mut Self,
-        _proxy: &wl_compositor::WlCompositor,
-        _event: <wl_compositor::WlCompositor as wayland_client::Proxy>::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
-    ) {
-    }
-}
-
-impl Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()> for Wgpu {
-    fn event(
-        _state: &mut Self,
-        _proxy: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
-        _event: <zwlr_layer_shell_v1::ZwlrLayerShellV1 as wayland_client::Proxy>::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
-    ) {
-    }
-}
+delegate_noop!(Wgpu: zxdg_output_manager_v1::ZxdgOutputManagerV1);
+delegate_noop!(Wgpu: zwlr_layer_shell_v1::ZwlrLayerShellV1);
+delegate_noop!(Wgpu: wl_compositor::WlCompositor);
