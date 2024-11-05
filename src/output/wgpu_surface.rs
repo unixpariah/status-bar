@@ -1,42 +1,7 @@
+use crate::buffers;
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle, WaylandWindowHandle};
 use std::ptr::NonNull;
 use wayland_client::{protocol::wl_surface, Proxy};
-use wgpu::util::DeviceExt;
-
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 2],
-    color: [f32; 4],
-}
-
-impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
-
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
-        }
-    }
-}
-
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.5],
-        color: [1.0, 0.0, 0.0, 1.0],
-    },
-    Vertex {
-        position: [-0.5, 0.5],
-        color: [0.0, 1.0, 0.0, 1.0],
-    },
-    Vertex {
-        position: [0.5, -0.5],
-        color: [0.0, 0.0, 1.0, 1.0],
-    },
-];
 
 pub struct WgpuSurface {
     pub surface: wgpu::Surface<'static>,
@@ -46,8 +11,10 @@ pub struct WgpuSurface {
     pub shader: wgpu::ShaderModule,
     pub queue: wgpu::Queue,
     pub device: wgpu::Device,
-    pub vertex_buffer: wgpu::Buffer,
-    pub num_vertices: u32,
+    pub vertex_buffer: buffers::VertexBuffer,
+    pub index_buffer: buffers::IndexBuffer,
+    pub projection_uniform: buffers::ProjectionUniform,
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl WgpuSurface {
@@ -78,10 +45,34 @@ impl WgpuSurface {
         let (device, queue) = pollster::block_on(adapter.request_device(&Default::default(), None))
             .expect("Failed to request device");
 
+        let projection_uniform = buffers::ProjectionUniform::new(&device, 0.0, 500.0, 0.0, 1080.0);
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("bind group layout"),
+        });
+        let projection_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: projection_uniform.buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -112,7 +103,7 @@ impl WgpuSurface {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
+                buffers: &[buffers::Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -144,22 +135,41 @@ impl WgpuSurface {
             },
         });
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            usage: wgpu::BufferUsages::VERTEX,
-            contents: bytemuck::cast_slice(VERTICES),
-        });
+        let vertices: &[buffers::Vertex] = &[
+            buffers::Vertex {
+                position: [0.0, 1080.0],
+                color: [1.0, 0.0, 0.0, 1.0],
+            },
+            buffers::Vertex {
+                position: [500.0, 1080.0],
+                color: [0.0, 1.0, 0.0, 1.0],
+            },
+            buffers::Vertex {
+                position: [500.0, 0.0],
+                color: [1.0, 1.0, 0.0, 1.0],
+            },
+            buffers::Vertex {
+                position: [0.0, 0.0],
+                color: [0.0, 0.0, 1.0, 1.0],
+            },
+        ];
+        let vertex_buffer = buffers::VertexBuffer::new(&device, vertices);
+
+        let indices: &[u16] = &[0, 1, 3, 1, 2, 3];
+        let index_buffer = buffers::IndexBuffer::new(&device, indices);
 
         Self {
             surface: wgpu_surface,
             config,
             render_pipeline,
-            vertex_buffer,
             adapter,
             shader,
             queue,
             device,
-            num_vertices: VERTICES.len() as u32,
+            vertex_buffer,
+            index_buffer,
+            bind_group: projection_bind_group,
+            projection_uniform,
         }
     }
 

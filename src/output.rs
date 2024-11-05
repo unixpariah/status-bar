@@ -1,7 +1,7 @@
 mod config;
 pub mod wgpu_surface;
 
-use crate::StatusBar;
+use crate::{buffers, StatusBar};
 use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, QueueHandle,
@@ -30,14 +30,18 @@ impl OutputInfo {
     }
 }
 
-pub struct Output {
+pub struct Surface {
     wgpu: wgpu_surface::WgpuSurface,
     layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     surface: wl_surface::WlSurface,
+    config: config::Config,
+}
+
+pub struct Output {
+    surface: Surface,
     output: wl_output::WlOutput,
     xdg_output: zxdg_output_v1::ZxdgOutputV1,
     pub info: OutputInfo,
-    config: config::Config,
 }
 
 impl Output {
@@ -49,19 +53,26 @@ impl Output {
         id: u32,
         wgpu: wgpu_surface::WgpuSurface,
     ) -> Self {
-        Self {
-            config: config::Config::default(),
-            xdg_output,
-            output,
+        let config = config::Config::default();
+
+        let surface = Surface {
+            wgpu,
             layer_surface,
             surface,
+            config,
+        };
+
+        Self {
+            xdg_output,
+            output,
             info: OutputInfo::new(id),
-            wgpu,
+            surface,
         }
     }
 
     pub fn render(&self) {
         let surface_texture = self
+            .surface
             .wgpu
             .surface
             .get_current_texture()
@@ -70,7 +81,11 @@ impl Output {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.wgpu.device.create_command_encoder(&Default::default());
+        let mut encoder = self
+            .surface
+            .wgpu
+            .device
+            .create_command_encoder(&Default::default());
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -86,12 +101,17 @@ impl Output {
             occlusion_query_set: None,
         });
 
-        render_pass.set_pipeline(&self.wgpu.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.wgpu.vertex_buffer.slice(..));
-        render_pass.draw(0..self.wgpu.num_vertices, 0..1);
+        render_pass.set_pipeline(&self.surface.wgpu.render_pipeline);
+        render_pass.set_bind_group(0, &self.surface.wgpu.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.surface.wgpu.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(
+            self.surface.wgpu.index_buffer.slice(..),
+            wgpu::IndexFormat::Uint16,
+        );
+        render_pass.draw_indexed(0..self.surface.wgpu.index_buffer.size(), 0, 0..1);
         drop(render_pass); // Drop renderpass and release mutable borrow on encoder
 
-        self.wgpu.queue.submit(Some(encoder.finish()));
+        self.surface.wgpu.queue.submit(Some(encoder.finish()));
         surface_texture.present();
     }
 }
@@ -170,7 +190,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for StatusBar {
         let output = state
             .outputs
             .iter_mut()
-            .find(|output| output.layer_surface == *layer_surface)
+            .find(|output| output.surface.layer_surface == *layer_surface)
             .unwrap(); // Can't be called if this layer_surface wasn't created
 
         let zwlr_layer_surface_v1::Event::Configure {
@@ -182,10 +202,11 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for StatusBar {
             return;
         };
 
-        output.layer_surface.ack_configure(serial);
+        output.surface.layer_surface.ack_configure(serial);
 
         output
+            .surface
             .config
-            .apply(&layer_surface, width, height, &mut output.wgpu);
+            .apply(&layer_surface, width, height, &mut output.surface.wgpu);
     }
 }
