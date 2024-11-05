@@ -1,12 +1,10 @@
 pub mod buffers;
 pub mod math;
 mod output;
+mod rectangle;
 mod seat;
 mod wgpu_state;
 
-use calloop::EventLoop;
-use calloop_wayland_source::WaylandSource;
-use output::wgpu_surface;
 use wayland_client::{
     delegate_noop,
     protocol::{wl_compositor, wl_output, wl_registry, wl_seat},
@@ -53,23 +51,17 @@ fn main() {
     let conn = Connection::connect_to_env().expect("Connection to wayland failed");
     let display = conn.display();
 
-    let event_queue = conn.new_event_queue();
-
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
     let mut status_bar = StatusBar::new(&conn);
 
     _ = display.get_registry(&qh, ());
-
-    let mut event_loop: EventLoop<StatusBar> = EventLoop::try_new().unwrap();
-    WaylandSource::new(conn.clone(), event_queue)
-        .insert(event_loop.handle())
-        .unwrap();
-
-    event_loop.dispatch(None, &mut status_bar).unwrap();
+    event_queue.dispatch_pending(&mut status_bar).unwrap();
+    event_queue.roundtrip(&mut status_bar).unwrap();
 
     while !status_bar.exit {
-        event_loop.dispatch(None, &mut status_bar).unwrap();
+        event_queue.dispatch_pending(&mut status_bar).unwrap();
         status_bar.render();
     }
 }
@@ -149,19 +141,14 @@ impl Dispatch<wl_registry::WlRegistry, ()> for StatusBar {
                             .unwrap()
                             .get_xdg_output(&output, qh, ());
 
-                    let wgpu_surface = wgpu_surface::WgpuSurface::new(
-                        &surface,
-                        state.wgpu.raw_display_handle,
-                        &state.wgpu.instance,
-                    );
-
                     state.outputs.push(output::Output::new(
                         output,
                         xdg_output,
                         surface,
                         layer_surface,
                         name,
-                        wgpu_surface,
+                        state.wgpu.raw_display_handle,
+                        &state.wgpu.instance,
                     ));
                 }
                 _ => {}

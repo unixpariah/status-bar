@@ -1,14 +1,13 @@
-mod config;
-pub mod wgpu_surface;
+mod surface;
 
-use crate::{buffers, StatusBar};
+use crate::StatusBar;
+use raw_window_handle::RawDisplayHandle;
 use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_v1;
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1;
-use wgpu::util::RenderEncoder;
 
 pub struct OutputInfo {
     name: String,
@@ -30,15 +29,8 @@ impl OutputInfo {
     }
 }
 
-pub struct Surface {
-    wgpu: wgpu_surface::WgpuSurface,
-    layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
-    surface: wl_surface::WlSurface,
-    config: config::Config,
-}
-
 pub struct Output {
-    surface: Surface,
+    surface: surface::Surface,
     output: wl_output::WlOutput,
     xdg_output: zxdg_output_v1::ZxdgOutputV1,
     pub info: OutputInfo,
@@ -51,16 +43,10 @@ impl Output {
         surface: wl_surface::WlSurface,
         layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         id: u32,
-        wgpu: wgpu_surface::WgpuSurface,
+        raw_display_handle: RawDisplayHandle,
+        instance: &wgpu::Instance,
     ) -> Self {
-        let config = config::Config::default();
-
-        let surface = Surface {
-            wgpu,
-            layer_surface,
-            surface,
-            config,
-        };
+        let surface = surface::Surface::new(layer_surface, surface, raw_display_handle, instance);
 
         Self {
             xdg_output,
@@ -102,8 +88,12 @@ impl Output {
         });
 
         render_pass.set_pipeline(&self.surface.wgpu.render_pipeline);
-        render_pass.set_bind_group(0, &self.surface.wgpu.bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.surface.wgpu.vertex_buffer.slice(..));
+        render_pass.set_bind_group(0, &self.surface.wgpu.projection_uniform.bind_group, &[]);
+
+        self.surface
+            .rectangle
+            .set_vertex_buffer(&self.surface.wgpu.device, &mut render_pass);
+
         render_pass.set_index_buffer(
             self.surface.wgpu.index_buffer.slice(..),
             wgpu::IndexFormat::Uint16,
@@ -121,9 +111,9 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for StatusBar {
         state: &mut Self,
         xdg_output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
     ) {
         let output = state
             .outputs
@@ -147,9 +137,9 @@ impl Dispatch<wl_output::WlOutput, ()> for StatusBar {
         state: &mut Self,
         wl_output: &wl_output::WlOutput,
         event: wl_output::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
     ) {
         let output = state
             .outputs
@@ -163,50 +153,5 @@ impl Dispatch<wl_output::WlOutput, ()> for StatusBar {
             }
             _ => {}
         }
-    }
-}
-
-impl Dispatch<wl_surface::WlSurface, ()> for StatusBar {
-    fn event(
-        _state: &mut Self,
-        _proxy: &wl_surface::WlSurface,
-        _event: wl_surface::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
-    ) {
-    }
-}
-
-impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for StatusBar {
-    fn event(
-        state: &mut Self,
-        layer_surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
-        event: zwlr_layer_surface_v1::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
-    ) {
-        let output = state
-            .outputs
-            .iter_mut()
-            .find(|output| output.surface.layer_surface == *layer_surface)
-            .unwrap(); // Can't be called if this layer_surface wasn't created
-
-        let zwlr_layer_surface_v1::Event::Configure {
-            serial,
-            width,
-            height,
-        } = event
-        else {
-            return;
-        };
-
-        output.surface.layer_surface.ack_configure(serial);
-
-        output
-            .surface
-            .config
-            .apply(&layer_surface, width, height, &mut output.surface.wgpu);
     }
 }

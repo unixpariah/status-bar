@@ -99,22 +99,54 @@ impl Deref for IndexBuffer {
     }
 }
 
+pub enum Uniform {
+    Projection(ProjectionUniform),
+}
+
 pub struct ProjectionUniform {
     pub buffer: wgpu::Buffer,
-    projection: math::Mat4,
+    pub projection: math::Mat4,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl ProjectionUniform {
     pub fn new(device: &wgpu::Device, left: f32, right: f32, top: f32, bottom: f32) -> Self {
         let projection = math::Mat4::projection(left, right, top, bottom);
 
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Buffer"),
+            usage: wgpu::BufferUsages::UNIFORM,
+            contents: bytemuck::cast_slice(&projection),
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("bind group layout"),
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
         Self {
+            buffer,
             projection,
-            buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Buffer"),
-                usage: wgpu::BufferUsages::UNIFORM,
-                contents: bytemuck::cast_slice(&projection),
-            }),
+            bind_group,
+            bind_group_layout,
         }
     }
 }

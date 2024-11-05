@@ -7,14 +7,12 @@ pub struct WgpuSurface {
     pub surface: wgpu::Surface<'static>,
     pub render_pipeline: wgpu::RenderPipeline,
     config: wgpu::SurfaceConfiguration,
-    pub adapter: wgpu::Adapter,
-    pub shader: wgpu::ShaderModule,
+    adapter: wgpu::Adapter,
+    shader: wgpu::ShaderModule,
     pub queue: wgpu::Queue,
     pub device: wgpu::Device,
-    pub vertex_buffer: buffers::VertexBuffer,
     pub index_buffer: buffers::IndexBuffer,
     pub projection_uniform: buffers::ProjectionUniform,
-    pub bind_group: wgpu::BindGroup,
 }
 
 impl WgpuSurface {
@@ -45,38 +43,16 @@ impl WgpuSurface {
         let (device, queue) = pollster::block_on(adapter.request_device(&Default::default(), None))
             .expect("Failed to request device");
 
-        let projection_uniform = buffers::ProjectionUniform::new(&device, 0.0, 500.0, 0.0, 1080.0);
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("bind group layout"),
-        });
-        let projection_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: projection_uniform.buffer.as_entire_binding(),
-            }],
-            label: Some("camera_bind_group"),
-        });
+        let projection_uniform = buffers::ProjectionUniform::new(&device, 0.0, 0.0, 0.0, 0.0);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
+                bind_group_layouts: &[&projection_uniform.bind_group_layout],
                 push_constant_ranges: &[],
             });
 
-        let shader = device.create_shader_module(wgpu::include_wgsl!("../shader.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("../../shader.wgsl"));
 
         let surface_caps = wgpu_surface.get_capabilities(&adapter);
         let surface_format = surface_caps
@@ -111,7 +87,7 @@ impl WgpuSurface {
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
@@ -135,26 +111,6 @@ impl WgpuSurface {
             },
         });
 
-        let vertices: &[buffers::Vertex] = &[
-            buffers::Vertex {
-                position: [0.0, 1080.0],
-                color: [1.0, 0.0, 0.0, 1.0],
-            },
-            buffers::Vertex {
-                position: [500.0, 1080.0],
-                color: [0.0, 1.0, 0.0, 1.0],
-            },
-            buffers::Vertex {
-                position: [500.0, 0.0],
-                color: [1.0, 1.0, 0.0, 1.0],
-            },
-            buffers::Vertex {
-                position: [0.0, 0.0],
-                color: [0.0, 0.0, 1.0, 1.0],
-            },
-        ];
-        let vertex_buffer = buffers::VertexBuffer::new(&device, vertices);
-
         let indices: &[u16] = &[0, 1, 3, 1, 2, 3];
         let index_buffer = buffers::IndexBuffer::new(&device, indices);
 
@@ -166,9 +122,7 @@ impl WgpuSurface {
             shader,
             queue,
             device,
-            vertex_buffer,
             index_buffer,
-            bind_group: projection_bind_group,
             projection_uniform,
         }
     }
@@ -176,5 +130,6 @@ impl WgpuSurface {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.config.width = width;
         self.config.height = height;
+        self.surface.configure(&self.device, &self.config);
     }
 }
