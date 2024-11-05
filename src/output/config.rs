@@ -1,9 +1,8 @@
+use super::wgpu_surface;
 use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_shell_v1::{self, Layer},
     zwlr_layer_surface_v1::{self, Anchor},
 };
-
-use super::wgpu_surface::WgpuSurface;
 
 enum Position {
     Left,
@@ -25,6 +24,7 @@ pub struct Config {
     margin: Margin,
     position: Position,
     layer: zwlr_layer_shell_v1::Layer,
+    pub background_color: [f64; 4],
 }
 
 impl Config {
@@ -33,7 +33,7 @@ impl Config {
         layer_surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         width: u32,
         height: u32,
-        wgpu_surface: &WgpuSurface,
+        wgpu_surface: &mut wgpu_surface::WgpuSurface,
     ) {
         let (width, height) = match self.position {
             Position::Bottom | Position::Top => (width, self.size),
@@ -88,6 +88,8 @@ impl Config {
             self.margin.left as i32,
         );
 
+        wgpu_surface.resize(width, height);
+
         let cap = wgpu_surface.surface.get_capabilities(&wgpu_surface.adapter);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -109,10 +111,11 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            size: 50,
+            size: 500,
             margin: Margin::default(),
-            position: Position::Top,
+            position: Position::Right,
             layer: Layer::Top,
+            background_color: [1.0, 1.0, 1.0, 1.0],
         }
     }
 }

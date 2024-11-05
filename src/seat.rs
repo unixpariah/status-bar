@@ -25,23 +25,22 @@ impl Dispatch<wl_seat::WlSeat, ()> for StatusBar {
         _conn: &Connection,
         qh: &QueueHandle<Self>,
     ) {
-        let Some(ref mut seat) = state.seat else {
+        // Can't be called if seat wasn't created
+        let seat = state.seat.as_mut().unwrap();
+
+        let wl_seat::Event::Capabilities {
+            capabilities: WEnum::Value(capabilities),
+        } = event
+        else {
             return;
         };
 
-        match event {
-            wl_seat::Event::Capabilities {
-                capabilities: WEnum::Value(capabilities),
-            } => {
-                if capabilities.contains(wl_seat::Capability::Keyboard) {
-                    seat.pointer = Some(Pointer {
-                        pointer: Some(seat.seat.get_pointer(qh, ())),
-                        x: 0,
-                        y: 0,
-                    })
-                }
-            }
-            _ => {}
+        if capabilities.contains(wl_seat::Capability::Pointer) {
+            seat.pointer = Some(Pointer {
+                pointer: Some(seat.seat.get_pointer(qh, ())),
+                x: 0,
+                y: 0,
+            });
         }
     }
 }
@@ -55,9 +54,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for StatusBar {
         _conn: &Connection,
         _qhandle: &QueueHandle<Self>,
     ) {
-        let Some(ref mut seat) = state.seat else {
-            return;
-        };
+        // Can't be called if pointer wasn't created
+        let pointer = state.seat.as_mut().unwrap().pointer.as_mut().unwrap();
 
         match event {
             wl_pointer::Event::Motion {
@@ -65,16 +63,18 @@ impl Dispatch<wl_pointer::WlPointer, ()> for StatusBar {
                 surface_x,
                 surface_y,
             } => {
-                let pointer = seat.pointer.as_mut().unwrap();
                 pointer.x = surface_x as i64;
                 pointer.y = surface_y as i64;
             }
             wl_pointer::Event::Button {
-                serial,
+                serial: _,
                 time: _,
                 button,
                 state,
-            } => {}
+            } => {
+                println!("x: {}, y: {}", pointer.x, pointer.y);
+                println!("{} {:#?}", button, state);
+            }
             _ => {}
         }
     }

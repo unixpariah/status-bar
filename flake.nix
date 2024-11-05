@@ -5,9 +5,13 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    wgsl_analyzer = {
+      url = "github:wgsl-analyzer/wgsl-analyzer";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, ... }:
+  outputs = { nixpkgs, ... }@inputs:
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = function:
@@ -30,6 +34,7 @@
             clippy
             pkg-config
             vulkan-loader
+            inputs.wgsl_analyzer.packages.${system}.default
           ];
         };
 

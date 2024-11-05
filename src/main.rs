@@ -1,11 +1,10 @@
 mod output;
 mod seat;
+mod wgpu_state;
 
 use calloop::EventLoop;
 use calloop_wayland_source::WaylandSource;
-use output::wgpu_surface::WgpuSurface;
-use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
-use std::ptr::NonNull;
+use output::wgpu_surface;
 use wayland_client::{
     delegate_noop,
     protocol::{wl_compositor, wl_output, wl_registry, wl_seat},
@@ -16,38 +15,28 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_shell_v1::{self, Layer},
     zwlr_layer_surface_v1::Anchor,
 };
+use wgpu_state::WgpuState;
 
 struct StatusBar {
     output_manager: Option<zxdg_output_manager_v1::ZxdgOutputManagerV1>,
     compositor: Option<wl_compositor::WlCompositor>,
     layer_shell: Option<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
     exit: bool,
-    instance: wgpu::Instance,
-    raw_display_handle: RawDisplayHandle,
     outputs: Vec<output::Output>,
     seat: Option<seat::Seat>,
+    wgpu: wgpu_state::WgpuState,
 }
 
 impl StatusBar {
     fn new(conn: &Connection) -> Self {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let raw_display_handle = RawDisplayHandle::Wayland(WaylandDisplayHandle::new(
-            NonNull::new(conn.backend().display_ptr() as *mut _).unwrap(),
-        ));
-
         Self {
             seat: None,
             compositor: None,
             output_manager: None,
             layer_shell: None,
             exit: false,
-            instance,
-            raw_display_handle,
             outputs: Vec::new(),
+            wgpu: WgpuState::new(conn),
         }
     }
 
@@ -158,8 +147,11 @@ impl Dispatch<wl_registry::WlRegistry, ()> for StatusBar {
                             .unwrap()
                             .get_xdg_output(&output, qh, ());
 
-                    let wgpu_surface =
-                        WgpuSurface::new(&surface, state.raw_display_handle, &state.instance);
+                    let wgpu_surface = wgpu_surface::WgpuSurface::new(
+                        &surface,
+                        state.wgpu.raw_display_handle,
+                        &state.wgpu.instance,
+                    );
 
                     state.outputs.push(output::Output::new(
                         output,
