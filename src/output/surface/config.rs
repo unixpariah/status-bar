@@ -30,7 +30,7 @@ impl Default for Config {
             margin: Margin::default(),
             position: Position::Right,
             layer: Layer::Top,
-            background_color: [0.65, 0.89, 0.63, 1.0],
+            background_color: [0.0, 0.0, 0.0, 0.0],
         }
     }
 }

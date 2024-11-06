@@ -1,7 +1,8 @@
 mod surface;
 
-use crate::StatusBar;
+use crate::{buffers, rectangle::Rectangle, StatusBar};
 use raw_window_handle::RawDisplayHandle;
+use surface::config;
 use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, QueueHandle,
@@ -90,15 +91,38 @@ impl Output {
         render_pass.set_pipeline(&self.surface.wgpu.render_pipeline);
         render_pass.set_bind_group(0, &self.surface.wgpu.projection_uniform.bind_group, &[]);
 
-        self.surface
-            .rectangle
-            .set_vertex_buffer(&self.surface.wgpu.device, &mut render_pass);
+        let generic_rectangle = Rectangle::default().get_vertices();
+        let rect_buf = buffers::VertexBuffer::new(&self.surface.wgpu.device, &generic_rectangle);
+        render_pass.set_vertex_buffer(0, rect_buf.slice(..));
+
+        let instance = self.surface.rectangle.get_instance();
+        let instance_two = Rectangle::default()
+            .set_color([1.0, 1.0, 1.0, 1.0])
+            .set_size(100, 100)
+            .set_position(100, 100)
+            .set_radius(0.3, 0.3, 0.3, 0.3)
+            .get_instance();
+
+        let instance_three = Rectangle::default()
+            .set_color([1.0, 0.0, 0.0, 1.0])
+            .set_size(150, 50)
+            .set_position(50, 350)
+            .set_radius(0.3, 0.3, 0.3, 0.3)
+            .get_instance();
+
+        let instances: Vec<_> = vec![instance, instance_two, instance_three];
+        let instance_buffer = buffers::InstanceBuffer::new(&self.surface.wgpu.device, &instances);
+        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
 
         render_pass.set_index_buffer(
             self.surface.wgpu.index_buffer.slice(..),
             wgpu::IndexFormat::Uint16,
         );
-        render_pass.draw_indexed(0..self.surface.wgpu.index_buffer.size(), 0, 0..1);
+        render_pass.draw_indexed(
+            0..self.surface.wgpu.index_buffer.size(),
+            0,
+            0..instance_buffer.size(),
+        );
         drop(render_pass); // Drop renderpass and release mutable borrow on encoder
 
         self.surface.wgpu.queue.submit(Some(encoder.finish()));
@@ -126,6 +150,19 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for StatusBar {
             zxdg_output_v1::Event::LogicalSize { width, height } => {
                 output.info.width = width;
                 output.info.height = height;
+
+                let (width, height) = match output.surface.config.position {
+                    config::Position::Top => (width as u32, output.surface.config.size),
+                    config::Position::Bottom => (width as u32, output.surface.config.size),
+                    config::Position::Left => (output.surface.config.size, height as u32),
+                    config::Position::Right => (output.surface.config.size, height as u32),
+                };
+
+                output
+                    .surface
+                    .layer_surface
+                    .set_size(width as u32, height as u32);
+                output.surface.surface.commit();
             }
             _ => {}
         }

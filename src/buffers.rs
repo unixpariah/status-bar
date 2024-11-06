@@ -1,10 +1,9 @@
+use crate::math::{self, Matrix};
 use std::{
     ops::{Deref, RangeBounds},
     rc::Rc,
 };
 use wgpu::{util::DeviceExt, BufferAddress};
-
-use crate::math::{self, Projection};
 
 pub struct Buffer<T> {
     buffer: wgpu::Buffer,
@@ -49,12 +48,10 @@ impl<T> Deref for Buffer<T> {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 2],
-    pub color: [f32; 4],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
+    const ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -99,8 +96,40 @@ impl Deref for IndexBuffer {
     }
 }
 
-pub enum Uniform {
-    Projection(ProjectionUniform),
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Debug)]
+pub struct Instance {
+    pub dimensions: [f32; 4],
+    pub color: [f32; 4],
+    pub border_radius: [f32; 4],
+}
+
+impl Instance {
+    const ATTRIBS: [wgpu::VertexAttribute; 3] =
+        wgpu::vertex_attr_array![2 => Float32x4, 3 => Float32x4, 4 => Float32x4];
+
+    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
+pub struct InstanceBuffer(Buffer<Instance>);
+
+impl InstanceBuffer {
+    pub fn new(device: &wgpu::Device, instances: &[Instance]) -> InstanceBuffer {
+        InstanceBuffer(Buffer::new(device, wgpu::BufferUsages::VERTEX, instances))
+    }
+}
+
+impl Deref for InstanceBuffer {
+    type Target = Buffer<Instance>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 pub struct ProjectionUniform {
@@ -150,5 +179,3 @@ impl ProjectionUniform {
         }
     }
 }
-
-// You get the correct color using the following formula: rgb_color = ((srgb_color / 255 + 0.055) / 1.055) ^ 2.4

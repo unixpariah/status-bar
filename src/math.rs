@@ -1,10 +1,10 @@
 pub type Mat4 = [[f32; 4]; 4];
 
-pub trait Projection {
+pub trait Matrix {
     fn projection(left: f32, right: f32, top: f32, bottom: f32) -> Self;
 }
 
-impl Projection for Mat4 {
+impl Matrix for Mat4 {
     fn projection(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         [
             [2.0 / (right - left), 0.0, 0.0, 0.0],

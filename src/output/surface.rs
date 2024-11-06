@@ -1,4 +1,4 @@
-mod config;
+pub mod config;
 pub mod wgpu_surface;
 
 use crate::{buffers, rectangle::Rectangle, StatusBar};
@@ -21,48 +21,51 @@ impl Surface {
         raw_display_handle: RawDisplayHandle,
         instance: &wgpu::Instance,
     ) -> Self {
-        let config = config::Config::default();
+        let mut config = config::Config::default();
+        config.position = config::Position::Left;
+        config.background_color = [0.65, 0.89, 0.63, 1.0];
 
-        Self {
+        layer_surface.set_size(1, 1);
+        layer_surface.set_anchor(Anchor::Top);
+        surface.commit();
+
+        let mut surface = Self {
             wgpu: wgpu_surface::WgpuSurface::new(&surface, raw_display_handle, instance),
             layer_surface,
             surface,
             config,
             rectangle: Rectangle::default(),
-        }
+        };
+
+        surface.apply_config();
+
+        surface
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        let (width, height) = (
-            width - self.config.margin.right - self.config.margin.left,
-            height - self.config.margin.top - self.config.margin.bottom,
-        );
+        self.rectangle.set_position(0, 0).set_size(width, height);
 
         self.wgpu.resize(width, height);
-        self.layer_surface.set_size(width, height);
         self.wgpu.projection_uniform = buffers::ProjectionUniform::new(
             &self.wgpu.device,
-            self.config.margin.left as f32,
+            0.0,
             width as f32,
-            self.config.margin.top as f32,
+            0.0,
             height as f32,
         );
-
-        self.rectangle.set_position(0, 0).set_size(width, height);
     }
 
-    pub fn apply_config(&mut self, width: u32, height: u32) {
-        let (anchor, exclusive_zone) = match self.config.position {
-            config::Position::Top => (Anchor::Top | Anchor::Left | Anchor::Right, height as i32),
-            config::Position::Bottom => {
-                (Anchor::Bottom | Anchor::Left | Anchor::Right, height as i32)
-            }
-            config::Position::Left => (Anchor::Top | Anchor::Left | Anchor::Bottom, width as i32),
-            config::Position::Right => (Anchor::Top | Anchor::Right | Anchor::Bottom, width as i32),
+    pub fn apply_config(&mut self) {
+        let anchor = match self.config.position {
+            config::Position::Top => Anchor::Top | Anchor::Left | Anchor::Right,
+            config::Position::Bottom => Anchor::Bottom | Anchor::Left | Anchor::Right,
+            config::Position::Left => Anchor::Top | Anchor::Left | Anchor::Bottom,
+            config::Position::Right => Anchor::Top | Anchor::Right | Anchor::Bottom,
         };
 
         self.layer_surface.set_anchor(anchor);
-        self.layer_surface.set_exclusive_zone(exclusive_zone);
+        self.layer_surface
+            .set_exclusive_zone(self.config.size as i32);
         self.layer_surface.set_layer(self.config.layer);
         self.layer_surface.set_margin(
             self.config.margin.top as i32,
@@ -72,12 +75,6 @@ impl Surface {
         );
 
         self.rectangle.set_color(self.config.background_color);
-
-        let (width, height) = match self.config.position {
-            config::Position::Bottom | config::Position::Top => (width, self.config.size),
-            config::Position::Right | config::Position::Left => (self.config.size, height),
-        };
-        self.resize(width, height);
     }
 }
 
@@ -118,6 +115,6 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for StatusBar {
         };
 
         output.surface.layer_surface.ack_configure(serial);
-        output.surface.apply_config(width, height);
+        output.surface.resize(width, height);
     }
 }

@@ -59,16 +59,21 @@ impl WgpuSurface {
             .formats
             .iter()
             .find(|f| f.is_srgb())
-            .copied()
-            .unwrap_or(surface_caps.formats[0]);
+            .unwrap_or(&surface_caps.formats[0]);
+
+        let alpha_mode = surface_caps
+            .alpha_modes
+            .iter()
+            .find(|a| **a == wgpu::CompositeAlphaMode::PreMultiplied)
+            .unwrap_or(&surface_caps.alpha_modes[0]);
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
+            format: *surface_format,
             width: 1,
             height: 1,
             present_mode: surface_caps.present_modes[0],
-            alpha_mode: surface_caps.alpha_modes[0],
+            alpha_mode: *alpha_mode,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
@@ -79,7 +84,7 @@ impl WgpuSurface {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[buffers::Vertex::desc()],
+                buffers: &[buffers::Vertex::desc(), buffers::Instance::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
