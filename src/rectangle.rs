@@ -80,11 +80,12 @@ impl Rectangle {
     }
 
     pub fn get_instance(&self) -> buffers::Instance {
-        let width = self.x + self.width + self.padding[3] + self.padding[1];
-        let height = self.y + self.height + self.padding[0] + self.padding[2];
+        let width = self.width + self.padding[3] + self.padding[1];
+        let height = self.height + self.padding[0] + self.padding[2];
 
         buffers::Instance {
-            dimensions: [self.x, self.y, width, height],
+            position: [self.x, self.y],
+            size: [width, height],
             color: self.background_color,
             border_radius: self.border.radius,
         }

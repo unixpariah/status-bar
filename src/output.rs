@@ -97,17 +97,17 @@ impl Output {
 
         let instance = self.surface.rectangle.get_instance();
         let instance_two = Rectangle::default()
-            .set_color([1.0, 1.0, 1.0, 1.0])
+            .set_color([0.0, 0.0, 0.0, 1.0])
             .set_size(100, 100)
-            .set_position(100, 100)
-            .set_radius(0.3, 0.3, 0.3, 0.3)
+            .set_position(100, 500)
+            .set_radius(0.0, 10.0, 20.0, 30.0)
             .get_instance();
 
         let instance_three = Rectangle::default()
             .set_color([1.0, 0.0, 0.0, 1.0])
-            .set_size(150, 50)
-            .set_position(50, 350)
-            .set_radius(0.3, 0.3, 0.3, 0.3)
+            .set_size(300, 300)
+            .set_position(100, 0)
+            .set_radius(10.0, 10.0, 10.0, 10.0)
             .get_instance();
 
         let instances: Vec<_> = vec![instance, instance_two, instance_three];

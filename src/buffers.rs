@@ -99,14 +99,15 @@ impl Deref for IndexBuffer {
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Debug)]
 pub struct Instance {
-    pub dimensions: [f32; 4],
+    pub position: [f32; 2],
+    pub size: [f32; 2],
     pub color: [f32; 4],
     pub border_radius: [f32; 4],
 }
 
 impl Instance {
-    const ATTRIBS: [wgpu::VertexAttribute; 3] =
-        wgpu::vertex_attr_array![2 => Float32x4, 3 => Float32x4, 4 => Float32x4];
+    const ATTRIBS: [wgpu::VertexAttribute; 4] =
+        wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x4];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
