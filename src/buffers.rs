@@ -103,11 +103,12 @@ pub struct Instance {
     pub size: [f32; 2],
     pub color: [f32; 4],
     pub border_radius: [f32; 4],
+    pub border_size: [f32; 4],
+    pub border_color: [f32; 4],
 }
 
 impl Instance {
-    const ATTRIBS: [wgpu::VertexAttribute; 4] =
-        wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x4];
+    const ATTRIBS: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {

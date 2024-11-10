@@ -10,11 +10,13 @@ struct VertexInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) rect_pos: vec2<f32>,
-    @location(1) rect_size: vec2<f32>,
-    @location(2) rect_color: vec4<f32>,
-    @location(3) border_radius: vec4<f32>,
-    @location(4) uv: vec2<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) rect_pos: vec2<f32>,
+    @location(2) rect_size: vec2<f32>,
+    @location(3) rect_color: vec4<f32>,
+    @location(4) border_radius: vec4<f32>,
+    @location(5) border_size: vec4<f32>,
+    @location(6) border_color: vec4<f32>,
 };
 
 struct InstanceInput {
@@ -22,6 +24,8 @@ struct InstanceInput {
     @location(2) rect_size: vec2<f32>,
     @location(3) rect_color: vec4<f32>,
     @location(4) border_radius: vec4<f32>,
+    @location(5) border_size: vec4<f32>,
+    @location(6) border_color: vec4<f32>,
 }
 
 // MIT License. © 2023 Inigo Quilez, Munrocket
@@ -47,23 +51,29 @@ fn vs_main(
 
     out.clip_position = projection.projection * vec4<f32>(position, 0.0, 1.0);
 
+    out.uv = position;
     out.rect_color = instance.rect_color;
     out.rect_pos = instance.rect_pos;
     out.rect_size = instance.rect_size;
     out.border_radius = instance.border_radius;
-    out.uv = position;
+    out.border_size = instance.border_size;
+    out.border_color = instance.border_color;
 
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let radius = vec4<f32>(10.0);
-
     let dist = sdf_rounded_rect(in.uv - in.rect_pos - (in.rect_size / 2.0), in.rect_size / 2.0, in.border_radius);
+    let smoothed_alpha = 1.0 - smoothstep(0.0f, 2.0, dist);
+    let color = vec4<f32>(in.rect_color.rgb, in.rect_color.a * smoothed_alpha);
 
-    let edge_softness = 1.0;
-    let smoothed_alpha = 1.0-smoothstep(0.0f, edge_softness * 2.0, dist);
+    return color;
+    //let shadow_softness = 30.0;
+    //let shadow_offset = vec2<f32>(0.0, 10.0);
+    //let shadow_distance = sdf_rounded_rect(in.uv - in.rect_pos + shadow_offset - (in.rect_size / 2.0), in.rect_size / 2.0, in.border_radius);
+    //let shadow_alpha = 1.0 - smoothstep(-shadow_softness, shadow_softness, shadow_distance);
+    //let shadow_color = vec4<f32>(0.4, 0.4, 0.4, 1.0);
 
-    return vec4<f32>(in.rect_color.rgb, in.rect_color.a * smoothed_alpha);
+    //return mix(color, shadow_color, shadow_alpha - smoothed_alpha);
 }

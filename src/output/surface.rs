@@ -29,12 +29,15 @@ impl Surface {
         layer_surface.set_anchor(Anchor::Top);
         surface.commit();
 
+        let mut rectangle = Rectangle::default();
+        rectangle.set_border_radius(10.0, 10.0, 10.0, 10.0);
+
         let mut surface = Self {
             wgpu: wgpu_surface::WgpuSurface::new(&surface, raw_display_handle, instance),
             layer_surface,
             surface,
             config,
-            rectangle: Rectangle::default(),
+            rectangle,
         };
 
         surface.apply_config();
@@ -43,7 +46,7 @@ impl Surface {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.rectangle.set_position(0, 0).set_size(width, height);
+        self.rectangle.set_size(width as f32, height as f32);
 
         self.wgpu.resize(width, height);
         self.wgpu.projection_uniform = buffers::ProjectionUniform::new(
@@ -74,7 +77,9 @@ impl Surface {
             self.config.margin.left as i32,
         );
 
-        self.rectangle.set_color(self.config.background_color);
+        let color = self.config.background_color;
+        self.rectangle
+            .set_background_color(color[0], color[1], color[2], color[3]);
     }
 }
 
