@@ -123,8 +123,8 @@ impl Output {
             .set_background_color(0.0, 1.0, 0.0, 1.0)
             .set_size(100.0, 100.0)
             .set_coordinates(100.0, 500.0)
-            .set_border_radius(5.0, 5.0, 5.0, 5.0)
-            .set_border_size(8.0, 6.0, 4.0, 2.0)
+            .set_border_radius(10.0, 10.0, 10.0, 10.0)
+            .set_border_size(2.0, 2.0, 2.0, 2.0)
             .set_border_color(1.0, 1.0, 1.0, 1.0)
             .get_instance();
 
