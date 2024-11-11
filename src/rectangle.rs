@@ -35,8 +35,27 @@ pub enum BorderStyle {
     Hidden,
 }
 
+#[derive(Default)]
+pub struct BorderRadius {
+    top_left: f32,
+    top_right: f32,
+    bottom_left: f32,
+    bottom_right: f32,
+}
+
+impl BorderRadius {
+    fn to_array(&self) -> [f32; 4] {
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_left,
+            self.bottom_right,
+        ]
+    }
+}
+
 struct Border {
-    radius: [f32; 4],
+    radius: BorderRadius,
     size: BoxSpacing,
     color: [f32; 4],
     style: BorderStyle,
@@ -66,6 +85,32 @@ impl BoxSpacing {
     }
 }
 
+// Feature Parity
+// Name             | Implemented by Struct | Implemented by Shader
+// -----------------|-----------------------|-----------------------
+// x                 | [x]                   | [x]
+// y                 | [x]                   | [x]
+// width             | [x]                   | [x]
+// height            | [x]                   | [x]
+// bg-color          | [x]                   | [x]
+// bg-image          | [x]                   | [x]
+// box-sizing        | [x]                   | [x]
+// padding           | [x]                   | [x]
+// border            | [x]                   | [ ]
+// box-shadow        | [x]                   | [ ]
+// outline           | [x]                   | [ ]
+// opacity           | [x]                   | [x]
+// blur              | [x]                   | [ ]
+// brightness        | [x]                   | [ ]
+// contrast          | [x]                   | [ ]
+// grayscale         | [x]                   | [ ]
+// invert            | [x]                   | [ ]
+// sepia             | [x]                   | [ ]
+// saturate          | [x]                   | [ ]
+// hue-rotate        | [x]                   | [ ]
+// rotate            | [x]                   | [ ]
+// scale             | [x]                   | [ ]
+// skew              | [x]                   | [ ]
 pub struct Rectangle {
     x: f32,
     y: f32,
@@ -95,7 +140,6 @@ pub struct Extents {
 }
 
 impl Rectangle {
-    // Setters with chaining
     pub fn set_outline_width(&mut self, width: f32) -> &mut Self {
         self.outline.width = width;
         self
@@ -200,7 +244,12 @@ impl Rectangle {
         bottom_right: f32,
         bottom_left: f32,
     ) -> &mut Self {
-        self.border.radius = [top_left, top_right, bottom_right, bottom_left];
+        self.border.radius = BorderRadius {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        };
         self
     }
 
@@ -248,32 +297,42 @@ impl Rectangle {
     pub fn get_vertices(&self) -> [buffers::Vertex; 4] {
         let extents = self.get_extents();
 
+        let x = extents.x + self.border.size.left;
+        let y = extents.y + self.border.size.top;
+
+        let width = extents.width - self.border.size.left - self.border.size.right;
+        let height = extents.height - self.border.size.top - self.border.size.bottom;
+
         [
             buffers::Vertex {
-                position: [extents.x, extents.y + extents.height],
+                position: [x, y + height],
             },
             buffers::Vertex {
-                position: [extents.x + extents.width, extents.y + extents.height],
+                position: [x + width, y + height],
             },
             buffers::Vertex {
-                position: [extents.x + extents.width, extents.y],
+                position: [x + width, y],
             },
-            buffers::Vertex {
-                position: [extents.x, extents.y],
-            },
+            buffers::Vertex { position: [x, y] },
         ]
     }
 
     pub fn get_instance(&self) -> buffers::Instance {
         let extents = self.get_extents();
-        let width = extents.width;
-        let height = extents.height;
+
+        // I want size and position to be position of the rectangle itself without border and just
+        // calculate the full size in the shader itself
+        let x = extents.x + self.border.size.left;
+        let y = extents.y + self.border.size.top;
+
+        let width = extents.width - self.border.size.left - self.border.size.right;
+        let height = extents.height - self.border.size.top - self.border.size.bottom;
 
         buffers::Instance {
-            position: [extents.x, extents.y],
+            position: [x, y],
             size: [width, height],
             color: self.background_color,
-            border_radius: self.border.radius,
+            border_radius: self.border.radius.to_array(),
             border_size: self.border.size.to_array(),
             border_color: self.border.color,
         }
@@ -291,7 +350,7 @@ impl Default for Rectangle {
             padding: BoxSpacing::default(),
             background_color: [0.0, 0.0, 0.0, 0.0],
             border: Border {
-                radius: [0.0, 0.0, 0.0, 0.0],
+                radius: BorderRadius::default(),
                 color: [0.0, 0.0, 0.0, 0.0],
                 size: BoxSpacing::default(),
                 style: BorderStyle::Solid,

@@ -101,8 +101,8 @@ impl Output {
             .set_size(100.0, 100.0)
             .set_coordinates(100.0, 700.0)
             .set_border_radius(0.0, 10.0, 30.0, 50.0)
-            .set_border_size(1.0, 1.0, 1.0, 1.0)
-            .set_border_color(1.0, 1.0, 1.0, 1.0)
+            .set_border_color(1.0, 1.0, 0.0, 1.0)
+            .set_border_size(2.0, 2.0, 2.0, 2.0)
             .get_instance();
 
         let instance_three = Rectangle::default()

@@ -47,7 +47,13 @@ fn vs_main(
     instance: InstanceInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    let position = model.position * instance.rect_size + instance.rect_pos;
+
+    let border_width = instance.border_size.x + instance.border_size.z;
+    let border_height = instance.border_size.y + instance.border_size.w;
+
+    let adjusted_size = instance.rect_size + vec2<f32>(border_width, border_height);
+    let adjusted_pos = instance.rect_pos - vec2<f32>(instance.border_size.x, instance.border_size.y);
+    let position = model.position * adjusted_size + adjusted_pos;
 
     out.clip_position = projection.projection * vec4<f32>(position, 0.0, 1.0);
 
@@ -65,10 +71,20 @@ fn vs_main(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = sdf_rounded_rect(in.uv - in.rect_pos - (in.rect_size / 2.0), in.rect_size / 2.0, in.border_radius);
-    let smoothed_alpha = 1.0 - smoothstep(0.0f, 2.0, dist);
+    let smoothed_alpha = 1.0 - smoothstep(0.0, 2.0, dist);
     let color = vec4<f32>(in.rect_color.rgb, in.rect_color.a * smoothed_alpha);
 
-    return color;
+    let total_size_vert = in.rect_size.x + in.border_size.x + in.border_size.z;
+    let total_size_hor = in.rect_size.y + in.border_size.y + in.border_size.w;
+    let total_size = vec2<f32>(total_size_vert, total_size_hor);
+
+    let total_pos = in.rect_pos - vec2<f32>(in.border_size.x, in.border_size.y);
+
+    let border_dist = sdf_rounded_rect(in.uv - total_pos - (total_size / 2.0), total_size / 2.0, in.border_radius);
+    let border_smoothed_alpha = 1.0 - smoothstep(0.0, 2.0, border_dist);
+    let border_color = vec4<f32>(in.border_color.rgb, in.border_color.a * border_smoothed_alpha);
+
+    return select(color, border_color, (border_dist <= 0.0 && dist > 0.0));
     //let shadow_softness = 30.0;
     //let shadow_offset = vec2<f32>(0.0, 10.0);
     //let shadow_distance = sdf_rounded_rect(in.uv - in.rect_pos + shadow_offset - (in.rect_size / 2.0), in.rect_size / 2.0, in.border_radius);

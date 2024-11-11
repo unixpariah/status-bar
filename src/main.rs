@@ -68,8 +68,8 @@ impl Dispatch<wl_registry::WlRegistry, ()> for StatusBar {
         state: &mut Self,
         registry: &wl_registry::WlRegistry,
         event: wl_registry::Event,
-        _data: &(),
-        _conn: &Connection,
+        _: &(),
+        _: &Connection,
         qh: &QueueHandle<Self>,
     ) {
         match event {
