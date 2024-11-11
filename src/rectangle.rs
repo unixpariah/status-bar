@@ -96,7 +96,7 @@ impl BoxSpacing {
 // bg-image          | [x]                   | [x]
 // box-sizing        | [x]                   | [x]
 // padding           | [x]                   | [x]
-// border            | [x]                   | [ ]
+// border            | [x]                   | [x]
 // box-shadow        | [x]                   | [ ]
 // outline           | [x]                   | [ ]
 // opacity           | [x]                   | [x]

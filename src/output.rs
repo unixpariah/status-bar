@@ -97,11 +97,11 @@ impl Output {
 
         let instance = self.surface.rectangle.get_instance();
         let instance_two = Rectangle::default()
-            .set_background_color(0.0, 0.0, 0.0, 1.0)
+            .set_background_color(0.0, 0.0, 1.0, 1.0)
             .set_size(100.0, 100.0)
             .set_coordinates(100.0, 700.0)
             .set_border_radius(0.0, 10.0, 30.0, 50.0)
-            .set_border_color(1.0, 1.0, 0.0, 1.0)
+            .set_border_color(1.0, 1.0, 1.0, 1.0)
             .set_border_size(2.0, 2.0, 2.0, 2.0)
             .get_instance();
 
@@ -113,13 +113,28 @@ impl Output {
             .get_instance();
 
         let instance_four = Rectangle::default()
-            .set_background_color(0.0, 0.0, 1.0, 1.0)
+            .set_background_color(0.0, 1.0, 0.0, 1.0)
             .set_size(100.0, 100.0)
             .set_coordinates(10.0, 100.0)
             .set_border_radius(55.0, 55.0, 55.0, 55.0)
             .get_instance();
 
-        let instances: Vec<_> = vec![instance, instance_two, instance_three, instance_four];
+        let instance_five = Rectangle::default()
+            .set_background_color(0.0, 1.0, 0.0, 1.0)
+            .set_size(100.0, 100.0)
+            .set_coordinates(100.0, 500.0)
+            .set_border_radius(5.0, 5.0, 5.0, 5.0)
+            .set_border_size(8.0, 6.0, 4.0, 2.0)
+            .set_border_color(1.0, 1.0, 1.0, 1.0)
+            .get_instance();
+
+        let instances: Vec<_> = vec![
+            instance,
+            instance_two,
+            instance_three,
+            instance_four,
+            instance_five,
+        ];
         let instance_buffer = buffers::InstanceBuffer::new(&self.surface.wgpu.device, &instances);
         render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
 
