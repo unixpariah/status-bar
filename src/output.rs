@@ -124,8 +124,10 @@ impl Output {
             .set_size(100.0, 100.0)
             .set_coordinates(100.0, 500.0)
             .set_border_radius(10.0, 10.0, 10.0, 10.0)
-            .set_border_size(2.0, 2.0, 2.0, 2.0)
-            .set_border_color(1.0, 1.0, 1.0, 1.0)
+            .set_border_size(0.0, 5.0, 10.0, 15.0)
+            .set_border_color(1.0, 1.0, 1.0, 0.1)
+            .set_outline_width(50.0)
+            .set_outline_color(1.0, 0.0, 0.0, 1.0)
             .get_instance();
 
         let instances: Vec<_> = vec![

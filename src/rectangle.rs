@@ -20,6 +20,7 @@ struct Outline {
     width: f32,
     color: [f32; 4],
     style: OutlineStyle,
+    offset: f32,
 }
 
 pub enum BorderStyle {
@@ -142,6 +143,11 @@ pub struct Extents {
 impl Rectangle {
     pub fn set_outline_width(&mut self, width: f32) -> &mut Self {
         self.outline.width = width;
+        self
+    }
+
+    pub fn set_outline_offset(&mut self, offset: f32) -> &mut Self {
+        self.outline.offset = offset;
         self
     }
 
@@ -335,6 +341,9 @@ impl Rectangle {
             border_radius: self.border.radius.to_array(),
             border_size: self.border.size.to_array(),
             border_color: self.border.color,
+            outline_width: self.outline.width,
+            outline_offset: self.outline.offset,
+            outline_color: self.outline.color,
         }
     }
 }
@@ -359,6 +368,7 @@ impl Default for Rectangle {
                 color: [0.0, 0.0, 0.0, 0.0],
                 width: 0.0,
                 style: OutlineStyle::Solid,
+                offset: 0.0,
             },
             box_sizing: BoxSizing::ContentBox,
             box_shadow: BoxShadow::default(),
