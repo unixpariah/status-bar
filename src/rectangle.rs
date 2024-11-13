@@ -1,65 +1,14 @@
+mod border;
+mod filter;
+mod image;
+mod outline;
+mod transform;
+
 use crate::buffers;
 
 pub enum BoxSizing {
     ContentBox,
     BorderBox,
-}
-
-pub enum OutlineStyle {
-    None,
-    Solid,
-    Dotted,
-    Dashed,
-    Double,
-    Groove,
-    Ridge,
-    Hidden,
-}
-
-struct Outline {
-    width: f32,
-    color: [f32; 4],
-    style: OutlineStyle,
-    offset: f32,
-}
-
-pub enum BorderStyle {
-    None,
-    Solid,
-    Dotted,
-    Dashed,
-    Double,
-    Groove,
-    Ridge,
-    Inset,
-    Outset,
-    Hidden,
-}
-
-#[derive(Default)]
-pub struct BorderRadius {
-    top_left: f32,
-    top_right: f32,
-    bottom_left: f32,
-    bottom_right: f32,
-}
-
-impl BorderRadius {
-    fn to_array(&self) -> [f32; 4] {
-        [
-            self.top_left,
-            self.top_right,
-            self.bottom_left,
-            self.bottom_right,
-        ]
-    }
-}
-
-struct Border {
-    radius: BorderRadius,
-    size: BoxSpacing,
-    color: [f32; 4],
-    style: BorderStyle,
 }
 
 #[derive(Default)]
@@ -73,15 +22,15 @@ struct BoxShadow {
 }
 
 #[derive(Default)]
-struct BoxSpacing {
-    top: f32,
-    right: f32,
-    bottom: f32,
-    left: f32,
+pub struct PaddingSize {
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
 }
 
-impl BoxSpacing {
-    fn to_array(&self) -> [f32; 4] {
+impl PaddingSize {
+    pub fn to_array(&self) -> [f32; 4] {
         [self.top, self.right, self.bottom, self.left]
     }
 }
@@ -94,40 +43,29 @@ impl BoxSpacing {
 // width             | [x]                   | [x]
 // height            | [x]                   | [x]
 // bg-color          | [x]                   | [x]
-// bg-image          | [x]                   | [x]
+// bg-image          | [ ]                   | [ ]
 // box-sizing        | [x]                   | [x]
 // padding           | [x]                   | [x]
 // border            | [x]                   | [x]
 // box-shadow        | [x]                   | [ ]
-// outline           | [x]                   | [ ]
-// opacity           | [x]                   | [x]
-// blur              | [x]                   | [ ]
-// brightness        | [x]                   | [ ]
-// contrast          | [x]                   | [ ]
-// grayscale         | [x]                   | [ ]
-// invert            | [x]                   | [ ]
-// sepia             | [x]                   | [ ]
-// saturate          | [x]                   | [ ]
-// hue-rotate        | [x]                   | [ ]
-// rotate            | [x]                   | [ ]
-// scale             | [x]                   | [ ]
-// skew              | [x]                   | [ ]
+// outline           | [x]                   | [x]
 pub struct Rectangle {
     x: f32,
     y: f32,
     width: f32,
     height: f32,
     background_color: [f32; 4],
-    padding: BoxSpacing,
+    padding: PaddingSize,
     box_sizing: BoxSizing,
-    border: Border,
-    outline: Outline,
+    border: border::Border,
+    outline: outline::Outline,
     box_shadow: BoxShadow,
     blur: f32,
     brightness: f32,
     contrast: f32,
     grayscale: f32,
     hue_rotate: f32,
+    rotate: f32,
     invert: f32,
     saturate: f32,
     sepia: f32,
@@ -141,69 +79,9 @@ pub struct Extents {
 }
 
 impl Rectangle {
-    pub fn set_outline_width(&mut self, width: f32) -> &mut Self {
-        self.outline.width = width;
-        self
-    }
-
-    pub fn set_outline_offset(&mut self, offset: f32) -> &mut Self {
-        self.outline.offset = offset;
-        self
-    }
-
-    pub fn set_outline_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
-        self.outline.color = [r, g, b, a];
-        self
-    }
-
-    pub fn set_outline_style(&mut self, style: OutlineStyle) -> &mut Self {
-        self.outline.style = style;
-        self
-    }
-
     pub fn set_coordinates(&mut self, x: f32, y: f32) -> &mut Self {
         self.x = x;
         self.y = y;
-        self
-    }
-
-    pub fn set_blur(&mut self, blur: f32) -> &mut Self {
-        self.blur = blur;
-        self
-    }
-
-    pub fn set_brightness(&mut self, brightness: f32) -> &mut Self {
-        self.brightness = brightness;
-        self
-    }
-
-    pub fn set_contrast(&mut self, contrast: f32) -> &mut Self {
-        self.contrast = contrast;
-        self
-    }
-
-    pub fn set_grayscale(&mut self, grayscale: f32) -> &mut Self {
-        self.grayscale = grayscale;
-        self
-    }
-
-    pub fn set_hue_rotate(&mut self, hue_rotate: f32) -> &mut Self {
-        self.hue_rotate = hue_rotate;
-        self
-    }
-
-    pub fn set_invert(&mut self, invert: f32) -> &mut Self {
-        self.invert = invert;
-        self
-    }
-
-    pub fn set_saturate(&mut self, saturate: f32) -> &mut Self {
-        self.saturate = saturate;
-        self
-    }
-
-    pub fn set_sepia(&mut self, sepia: f32) -> &mut Self {
-        self.sepia = sepia;
         self
     }
 
@@ -213,54 +91,13 @@ impl Rectangle {
         self
     }
 
-    pub fn set_opacity(&mut self, opacity: f32) -> &mut Self {
-        self.background_color[3] = opacity;
-        self
-    }
-
     pub fn set_box_sizing(&mut self, box_sizing: BoxSizing) -> &mut Self {
         self.box_sizing = box_sizing;
         self
     }
 
-    pub fn set_border_size(&mut self, top: f32, right: f32, bottom: f32, left: f32) -> &mut Self {
-        self.border.size = BoxSpacing {
-            top,
-            right,
-            bottom,
-            left,
-        };
-        self
-    }
-
-    pub fn set_border_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
-        self.border.color = [r, g, b, a];
-        self
-    }
-
-    pub fn set_border_style(&mut self, style: BorderStyle) -> &mut Self {
-        self.border.style = style;
-        self
-    }
-
-    pub fn set_border_radius(
-        &mut self,
-        top_left: f32,
-        top_right: f32,
-        bottom_right: f32,
-        bottom_left: f32,
-    ) -> &mut Self {
-        self.border.radius = BorderRadius {
-            top_left,
-            top_right,
-            bottom_right,
-            bottom_left,
-        };
-        self
-    }
-
     pub fn set_padding(&mut self, top: f32, right: f32, bottom: f32, left: f32) -> &mut Self {
-        self.padding = BoxSpacing {
+        self.padding = PaddingSize {
             top,
             right,
             bottom,
@@ -300,39 +137,15 @@ impl Rectangle {
         }
     }
 
-    pub fn get_vertices(&self) -> [buffers::Vertex; 4] {
-        let extents = self.get_extents();
-
-        let x = extents.x + self.border.size.left;
-        let y = extents.y + self.border.size.top;
-
-        let width = extents.width - self.border.size.left - self.border.size.right;
-        let height = extents.height - self.border.size.top - self.border.size.bottom;
-
-        [
-            buffers::Vertex {
-                position: [x, y + height],
-            },
-            buffers::Vertex {
-                position: [x + width, y + height],
-            },
-            buffers::Vertex {
-                position: [x + width, y],
-            },
-            buffers::Vertex { position: [x, y] },
-        ]
-    }
-
     pub fn get_instance(&self) -> buffers::Instance {
         let extents = self.get_extents();
 
-        // I want size and position to be position of the rectangle itself without border and just
-        // calculate the full size in the shader itself
-        let x = extents.x + self.border.size.left;
-        let y = extents.y + self.border.size.top;
+        // Extents only cover parts of rectangle that interact with the rest of ui
+        let x = extents.x - self.outline.width - self.outline.offset;
+        let y = extents.y - self.outline.width - self.outline.offset;
 
-        let width = extents.width - self.border.size.left - self.border.size.right;
-        let height = extents.height - self.border.size.top - self.border.size.bottom;
+        let width = extents.width + (self.outline.width + self.outline.offset) * 2.0;
+        let height = extents.height + (self.outline.width + self.outline.offset) * 2.0;
 
         buffers::Instance {
             position: [x, y],
@@ -356,26 +169,17 @@ impl Default for Rectangle {
             y: 0.0,
             width: 1.0,
             height: 1.0,
-            padding: BoxSpacing::default(),
+            padding: PaddingSize::default(),
             background_color: [0.0, 0.0, 0.0, 0.0],
-            border: Border {
-                radius: BorderRadius::default(),
-                color: [0.0, 0.0, 0.0, 0.0],
-                size: BoxSpacing::default(),
-                style: BorderStyle::Solid,
-            },
-            outline: Outline {
-                color: [0.0, 0.0, 0.0, 0.0],
-                width: 0.0,
-                style: OutlineStyle::Solid,
-                offset: 0.0,
-            },
+            border: border::Border::default(),
+            outline: outline::Outline::default(),
             box_sizing: BoxSizing::ContentBox,
             box_shadow: BoxShadow::default(),
             brightness: 1.0,
             contrast: 1.0,
             grayscale: 0.0,
             hue_rotate: 0.0,
+            rotate: 0.0,
             invert: 0.0,
             saturate: 1.0,
             sepia: 0.0,

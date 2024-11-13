@@ -91,8 +91,23 @@ impl Output {
         render_pass.set_pipeline(&self.surface.wgpu.render_pipeline);
         render_pass.set_bind_group(0, &self.surface.wgpu.projection_uniform.bind_group, &[]);
 
-        let generic_rectangle = Rectangle::default().get_vertices();
-        let rect_buf = buffers::VertexBuffer::new(&self.surface.wgpu.device, &generic_rectangle);
+        let rect_buf = buffers::VertexBuffer::new(
+            &self.surface.wgpu.device,
+            &[
+                buffers::Vertex {
+                    position: [0.0, 1.0],
+                },
+                buffers::Vertex {
+                    position: [1.0, 1.0],
+                },
+                buffers::Vertex {
+                    position: [1.0, 0.0],
+                },
+                buffers::Vertex {
+                    position: [0.0, 0.0],
+                },
+            ],
+        );
         render_pass.set_vertex_buffer(0, rect_buf.slice(..));
 
         let instance = self.surface.rectangle.get_instance();
@@ -125,9 +140,10 @@ impl Output {
             .set_coordinates(100.0, 500.0)
             .set_border_radius(10.0, 10.0, 10.0, 10.0)
             .set_border_size(0.0, 5.0, 10.0, 15.0)
-            .set_border_color(1.0, 1.0, 1.0, 0.1)
-            .set_outline_width(50.0)
+            .set_border_color(1.0, 1.0, 1.0, 1.0)
+            .set_outline_width(5.0)
             .set_outline_color(1.0, 0.0, 0.0, 1.0)
+            .set_outline_offset(50.0)
             .get_instance();
 
         let instances: Vec<_> = vec![

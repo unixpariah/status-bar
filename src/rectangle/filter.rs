@@ -1,0 +1,68 @@
+use super::Rectangle;
+
+// Name              | Implemented by Struct | Implemented by Shader
+// ------------------|-----------------------|-----------------------
+// opacity           | [x]                   | [x]
+// blur              | [x]                   | [ ]
+// brightness        | [x]                   | [ ]
+// contrast          | [x]                   | [ ]
+// grayscale         | [x]                   | [ ]
+// invert            | [x]                   | [ ]
+// sepia             | [x]                   | [ ]
+// saturate          | [x]                   | [ ]
+// hue-rotate        | [x]                   | [ ]
+// rotate            | [x]                   | [ ]
+// scale             | [x]                   | [ ]
+// skew              | [x]                   | [ ]
+
+impl Rectangle {
+    pub fn set_sepia(&mut self, sepia: f32) -> &mut Self {
+        self.sepia = sepia;
+        self
+    }
+
+    pub fn set_opacity(&mut self, opacity: f32) -> &mut Self {
+        self.background_color[3] = opacity;
+        self
+    }
+
+    pub fn set_blur(&mut self, blur: f32) -> &mut Self {
+        self.blur = blur;
+        self
+    }
+
+    pub fn set_brightness(&mut self, brightness: f32) -> &mut Self {
+        self.brightness = brightness;
+        self
+    }
+
+    pub fn set_contrast(&mut self, contrast: f32) -> &mut Self {
+        self.contrast = contrast;
+        self
+    }
+
+    pub fn set_grayscale(&mut self, grayscale: f32) -> &mut Self {
+        self.grayscale = grayscale;
+        self
+    }
+
+    pub fn set_hue_rotate(&mut self, hue_rotate: f32) -> &mut Self {
+        self.hue_rotate = hue_rotate;
+        self
+    }
+
+    pub fn set_invert(&mut self, invert: f32) -> &mut Self {
+        self.invert = invert;
+        self
+    }
+
+    pub fn set_saturate(&mut self, saturate: f32) -> &mut Self {
+        self.saturate = saturate;
+        self
+    }
+
+    pub fn set_rotate(&mut self, rotate: f32) -> &mut Self {
+        self.rotate = rotate;
+        self
+    }
+}

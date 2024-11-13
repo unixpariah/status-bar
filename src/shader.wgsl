@@ -23,8 +23,8 @@ struct VertexOutput {
 };
 
 struct InstanceInput {
-    @location(1) rect_pos: vec2<f32>,
-    @location(2) rect_size: vec2<f32>,
+    @location(1) pos: vec2<f32>,
+    @location(2) size: vec2<f32>,
     @location(3) rect_color: vec4<f32>,
     @location(4) border_radius: vec4<f32>,
     @location(5) border_size: vec4<f32>,
@@ -54,20 +54,18 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
 
-    // This thing has to be properly done
-    let border_width = instance.border_size.x + instance.border_size.z + (instance.outline_width + instance.outline_offset) * 2;
-    let border_height = instance.border_size.y + instance.border_size.w + (instance.outline_width + instance.outline_offset) * 2;
-
-    let adjusted_size = instance.rect_size + vec2<f32>(border_width, border_height);
-    let adjusted_pos = instance.rect_pos - vec2<f32>(instance.border_size.x, instance.border_size.y) - vec2<f32>(instance.outline_width);
-    let position = model.position * adjusted_size + adjusted_pos;
-
+    let position = model.position * instance.size + instance.pos;
     out.clip_position = projection.projection * vec4<f32>(position, 0.0, 1.0);
-
+    
     out.uv = position;
     out.rect_color = instance.rect_color;
-    out.rect_pos = instance.rect_pos;
-    out.rect_size = instance.rect_size;
+    out.rect_pos = instance.pos 
+		   + vec2<f32>(instance.border_size.x, instance.border_size.y) 
+		   + vec2<f32>(instance.outline_width + instance.outline_offset);
+    out.rect_size = instance.size 
+		    - vec2<f32>(instance.border_size.x + instance.border_size.z, instance.border_size.y + instance.border_size.w)
+		    - vec2<f32>(instance.outline_width * 2 + instance.outline_offset * 2);
+    
     out.border_radius = instance.border_radius;
     out.border_size = instance.border_size;
     out.border_color = instance.border_color;
@@ -80,21 +78,44 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let dist = sdf_rounded_rect(in.uv - in.rect_pos - (in.rect_size / 2.0), in.rect_size / 2.0, in.border_radius);
-    let smoothed_alpha = 1.0 - smoothstep(0.0, 2.0, dist);
-    let color = vec4<f32>(in.rect_color.rgb, in.rect_color.a * smoothed_alpha);
+    let rect_dist = sdf_rounded_rect(
+        in.uv - in.rect_pos - (in.rect_size / 2.0),
+        in.rect_size / 2.0,
+        in.border_radius
+    );
+    let rect_alpha = 1.0 - smoothstep(0.0, 2.0, rect_dist);
+    let rect_color = vec4<f32>(in.rect_color.rgb, in.rect_color.a * rect_alpha);
 
-    let total_size = in.rect_size + vec2<f32>((in.border_size.x + in.border_size.z), (in.border_size.y + in.border_size.w)) / 2.0;
-    let total_pos = in.rect_pos - vec2<f32>(in.border_size.x, in.border_size.y) / 2.0;
-    let border_dist = sdf_rounded_rect(in.uv - total_pos - (total_size / 2.0), total_size / 2.0, in.border_radius);
-    let border_smoothed_alpha = 1.0 - smoothstep(0.0, 2.0, border_dist);
-    let border_color = vec4<f32>(in.border_color.rgb, in.border_color.a * border_smoothed_alpha);
+    let border_size = in.rect_size + vec2<f32>((in.border_size.x + in.border_size.z), (in.border_size.y + in.border_size.w)) / 2.0;
+    let border_pos = in.rect_pos - vec2<f32>(in.border_size.x, in.border_size.y) / 2.0;
+    let border_dist = sdf_rounded_rect(
+        in.uv - border_pos - (border_size / 2.0),
+        border_size / 2.0,
+        in.border_radius
+    );
+    let border_alpha = 1.0 - smoothstep(0.0, 2.0, border_dist);
+    let border_color = vec4<f32>(in.border_color.rgb, in.border_color.a * border_alpha);
 
-    let tot_size = total_size + vec2<f32>(in.outline_width) * 2.0;
-    let tot_pos = total_pos - vec2<f32>(in.outline_width);
-    let outline_dist = sdf_rounded_rect(in.uv - tot_pos - (tot_size / 2.0), tot_size / 2.0, in.border_radius);
-    let outline_smoothed_alpha = 1.0 - smoothstep(0.0, 2.0, outline_dist);
-    let outline_color = vec4<f32>(in.outline_color.rgb, in.outline_color.a * outline_smoothed_alpha);
+    let outline_offset_size = border_size + vec2<f32>(in.outline_offset) * 2.0;
+    let outline_offset_pos = border_pos - vec2<f32>(in.outline_offset);
+    let outline_offset_dist = sdf_rounded_rect(
+        in.uv - outline_offset_pos - (outline_offset_size / 2.0),
+        outline_offset_size / 2.0,
+        in.border_radius
+    );
 
-    return mix(mix(color, border_color, smoothstep(0.0, 1.0, dist)), outline_color, smoothstep(0.0, 1.0, border_dist));
+    let outline_size = outline_offset_size + vec2<f32>(in.outline_width) * 2.0;
+    let outline_pos = outline_offset_pos - vec2<f32>(in.outline_width);
+    let outline_dist = sdf_rounded_rect(
+        in.uv - outline_pos - (outline_size / 2.0),
+        outline_size / 2.0,
+        in.border_radius
+    );
+    let outline_alpha = 1.0 - smoothstep(0.0, 2.0, outline_dist);
+    let outline_color = vec4<f32>(in.outline_color.rgb, in.outline_color.a * outline_alpha);
+
+    let blended_border = mix(rect_color, border_color, smoothstep(0.0, 1.0, rect_dist));
+    let blended_offset_outline = mix(blended_border, vec4<f32>(0.0), smoothstep(0.0, 1.0, border_dist));
+    let blended_outline = mix(blended_offset_outline, outline_color, smoothstep(0.0, 1.0, outline_offset_dist));
+    return blended_outline;
 }
