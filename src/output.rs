@@ -140,10 +140,13 @@ impl Output {
             .set_coordinates(100.0, 500.0)
             .set_border_radius(10.0, 10.0, 10.0, 10.0)
             .set_border_size(0.0, 5.0, 10.0, 15.0)
-            .set_border_color(1.0, 1.0, 1.0, 1.0)
+            .set_border_color(1.0, 1.0, 0.0, 1.0)
             .set_outline_width(5.0)
             .set_outline_color(1.0, 0.0, 0.0, 1.0)
             .set_outline_offset(50.0)
+            .set_boxshadow_offset(0.0, 10.0)
+            .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
+            .set_boxshadow_softness(30.0)
             .get_instance();
 
         let instances: Vec<_> = vec![

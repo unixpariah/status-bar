@@ -11,7 +11,6 @@ use super::Rectangle;
 // sepia             | [x]                   | [ ]
 // saturate          | [x]                   | [ ]
 // hue-rotate        | [x]                   | [ ]
-// rotate            | [x]                   | [ ]
 // scale             | [x]                   | [ ]
 // skew              | [x]                   | [ ]
 
@@ -58,11 +57,6 @@ impl Rectangle {
 
     pub fn set_saturate(&mut self, saturate: f32) -> &mut Self {
         self.saturate = saturate;
-        self
-    }
-
-    pub fn set_rotate(&mut self, rotate: f32) -> &mut Self {
-        self.rotate = rotate;
         self
     }
 }

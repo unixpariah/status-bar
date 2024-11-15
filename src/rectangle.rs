@@ -2,7 +2,8 @@ mod border;
 mod filter;
 mod image;
 mod outline;
-mod transform;
+
+use wgpu::hal::auxil::db::amd;
 
 use crate::buffers;
 
@@ -15,8 +16,7 @@ pub enum BoxSizing {
 struct BoxShadow {
     x_offset: f32,
     y_offset: f32,
-    blur_radius: f32,
-    spread_radius: f32,
+    softness: f32,
     color: [f32; 4],
     inset: bool,
 }
@@ -65,7 +65,6 @@ pub struct Rectangle {
     contrast: f32,
     grayscale: f32,
     hue_rotate: f32,
-    rotate: f32,
     invert: f32,
     saturate: f32,
     sepia: f32,
@@ -82,6 +81,22 @@ impl Rectangle {
     pub fn set_coordinates(&mut self, x: f32, y: f32) -> &mut Self {
         self.x = x;
         self.y = y;
+        self
+    }
+
+    pub fn set_boxshadow_offset(&mut self, x_offset: f32, y_offset: f32) -> &mut Self {
+        self.box_shadow.x_offset = x_offset;
+        self.box_shadow.y_offset = y_offset;
+        self
+    }
+
+    pub fn set_boxshadow_softness(&mut self, softness: f32) -> &mut Self {
+        self.box_shadow.softness = softness;
+        self
+    }
+
+    pub fn set_boxshadow_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
+        self.box_shadow.color = [r, g, b, a];
         self
     }
 
@@ -157,6 +172,9 @@ impl Rectangle {
             outline_width: self.outline.width,
             outline_offset: self.outline.offset,
             outline_color: self.outline.color,
+            boxshadow_offset: [self.box_shadow.x_offset, self.box_shadow.y_offset],
+            boxshadow_softness: self.box_shadow.softness,
+            boxshadow_color: self.box_shadow.color,
         }
     }
 }
@@ -179,7 +197,6 @@ impl Default for Rectangle {
             contrast: 1.0,
             grayscale: 0.0,
             hue_rotate: 0.0,
-            rotate: 0.0,
             invert: 0.0,
             saturate: 1.0,
             sepia: 0.0,

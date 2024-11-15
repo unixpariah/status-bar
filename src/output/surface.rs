@@ -23,7 +23,7 @@ impl Surface {
     ) -> Self {
         let mut config = config::Config::default();
         config.position = config::Position::Left;
-        config.background_color = [0.0, 0.0, 0.0, 1.0];
+        config.background_color = [0.0, 0.0, 0.0, 0.0];
 
         layer_surface.set_size(1, 1);
         layer_surface.set_anchor(Anchor::Top);
