@@ -166,8 +166,7 @@ impl Rectangle {
         // the calculated shadow (cant just take offset as blurring kind makes it different size)
 
         buffers::Instance {
-            position: [x, y],
-            size: [width, height],
+            dimensions: [x, y, width, height],
             color: self.background_color,
             border_radius: self.border.radius.to_array(),
             border_size: self.border.size.to_array(),
@@ -181,6 +180,7 @@ impl Rectangle {
             brightness: self.brightness,
             saturate: self.saturate,
             contrast: self.contrast,
+            invert: self.invert,
         }
     }
 }

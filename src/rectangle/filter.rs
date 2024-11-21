@@ -7,7 +7,7 @@ use super::Rectangle;
 // brightness        | [x]                   | [x]
 // contrast          | [x]                   | [x]
 // grayscale         | [x]                   | [ ]
-// invert            | [x]                   | [ ]
+// invert            | [x]                   | [x]
 // sepia             | [x]                   | [ ]
 // saturate          | [x]                   | [x]
 // hue-rotate        | [x]                   | [ ]
