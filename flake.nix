@@ -34,11 +34,16 @@
             clippy
             pkg-config
             vulkan-loader
+            renderdoc
+            vulkan-headers
+            vulkan-validation-layers
+            vulkan-tools
             inputs.wgsl_analyzer.packages.${system}.default
           ];
         };
 
         env = { RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}"; };
+
       });
 
       packages =

@@ -132,6 +132,9 @@ impl Output {
             .set_size(100.0, 100.0)
             .set_coordinates(10.0, 100.0)
             .set_border_radius(55.0, 55.0, 55.0, 55.0)
+            .set_boxshadow_offset(0.0, 10.0)
+            .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
+            .set_boxshadow_softness(30.0)
             .get_instance();
 
         let instance_five = Rectangle::default()

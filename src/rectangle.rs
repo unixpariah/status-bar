@@ -3,10 +3,9 @@ mod filter;
 mod image;
 mod outline;
 
-use wgpu::hal::auxil::db::amd;
-
 use crate::buffers;
 
+#[derive(PartialEq)]
 pub enum BoxSizing {
     ContentBox,
     BorderBox,
@@ -155,12 +154,16 @@ impl Rectangle {
     pub fn get_instance(&self) -> buffers::Instance {
         let extents = self.get_extents();
 
-        // Extents only cover parts of rectangle that interact with the rest of ui
         let x = extents.x - self.outline.width - self.outline.offset;
+
         let y = extents.y - self.outline.width - self.outline.offset;
 
         let width = extents.width + (self.outline.width + self.outline.offset) * 2.0;
+
         let height = extents.height + (self.outline.width + self.outline.offset) * 2.0;
+
+        // TODO: calculate size of shadow and get max of either outline width + outline.offset or
+        // the calculated shadow (cant just take offset as blurring kind makes it different size)
 
         buffers::Instance {
             position: [x, y],
@@ -175,6 +178,9 @@ impl Rectangle {
             boxshadow_offset: [self.box_shadow.x_offset, self.box_shadow.y_offset],
             boxshadow_softness: self.box_shadow.softness,
             boxshadow_color: self.box_shadow.color,
+            brightness: self.brightness,
+            saturate: self.saturate,
+            contrast: self.contrast,
         }
     }
 }
@@ -193,7 +199,7 @@ impl Default for Rectangle {
             outline: outline::Outline::default(),
             box_sizing: BoxSizing::ContentBox,
             box_shadow: BoxShadow::default(),
-            brightness: 1.0,
+            brightness: 0.0,
             contrast: 1.0,
             grayscale: 0.0,
             hue_rotate: 0.0,
