@@ -2,6 +2,7 @@ mod border;
 mod filter;
 mod image;
 mod outline;
+mod transform;
 
 use crate::buffers;
 
@@ -67,6 +68,9 @@ pub struct Rectangle {
     invert: f32,
     saturate: f32,
     sepia: f32,
+    scale: [f32; 2],
+    rotate: f32,
+    skew: [f32; 2],
 }
 
 pub struct Extents {
@@ -171,16 +175,11 @@ impl Rectangle {
             border_radius: self.border.radius.to_array(),
             border_size: self.border.size.to_array(),
             border_color: self.border.color,
-            outline_width: self.outline.width,
-            outline_offset: self.outline.offset,
+            outline: [self.outline.width, self.outline.offset],
             outline_color: self.outline.color,
-            boxshadow_offset: [self.box_shadow.x_offset, self.box_shadow.y_offset],
-            boxshadow_softness: self.box_shadow.softness,
-            boxshadow_color: self.box_shadow.color,
-            brightness: self.brightness,
-            saturate: self.saturate,
-            contrast: self.contrast,
-            invert: self.invert,
+            filter: [self.brightness, self.saturate, self.contrast, self.invert],
+            grayscale: self.grayscale,
+            scale: self.scale,
         }
     }
 }
@@ -206,6 +205,9 @@ impl Default for Rectangle {
             invert: 0.0,
             saturate: 1.0,
             sepia: 0.0,
+            scale: [1.0, 1.0],
+            rotate: 0.0,
+            skew: [0.0, 0.0],
         }
     }
 }

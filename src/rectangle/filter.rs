@@ -11,7 +11,7 @@ use super::Rectangle;
 // sepia             | [x]                   | [ ]
 // saturate          | [x]                   | [x]
 // hue-rotate        | [x]                   | [ ]
-// scale             | [x]                   | [ ]
+// scale             | [x]                   | [x]
 // skew              | [x]                   | [ ]
 
 impl Rectangle {

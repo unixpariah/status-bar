@@ -8,7 +8,6 @@ struct VertexInput {
     @location(0) position: vec2<f32>,
 };
 
-// TODO: clamp all of these to make more space
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -17,16 +16,16 @@ struct VertexOutput {
     @location(3) border_radius: vec4<f32>,
     @location(4) border_size: vec4<f32>,
     @location(5) border_color: vec4<f32>,
-    @location(6) outline_width: f32,
-    @location(7) outline_offset: f32,
-    @location(8) outline_color: vec4<f32>,
-    @location(9) boxshadow_offset: vec2<f32>,
-    @location(10) boxshadow_softness: f32,
-    @location(11) boxshadow_color: vec4<f32>,
-    @location(12) brightness: f32,
-    @location(13) saturate: f32,
-    @location(14) contrast: f32,
-    @location(15) invert: f32,
+    @location(6) outline: vec4<f32>,
+    // outline_width: vec2<f32>
+    // outline_offset: vec2<f32>
+    @location(7) outline_color: vec4<f32>,
+    @location(8) filters: vec4<f32>,
+    // brightness: f32,
+    // saturate: f32,
+    // contrast: f32,
+    // invert: f32,
+    @location(9) grayscale: f32,
 };
 
 struct InstanceInput {
@@ -35,51 +34,57 @@ struct InstanceInput {
     @location(3) border_radius: vec4<f32>,
     @location(4) border_size: vec4<f32>,
     @location(5) border_color: vec4<f32>,
-    @location(6) outline_width: f32,
-    @location(7) outline_offset: f32,
-    @location(8) outline_color: vec4<f32>,
-    @location(9) boxshadow_offset: vec2<f32>,
-    @location(10) boxshadow_softness: f32,
-    @location(11) boxshadow_color: vec4<f32>,
-    @location(12) brightness: f32,
-    @location(13) saturate: f32,
-    @location(14) contrast: f32,
-    @location(15) invert: f32,
+    @location(6) outline: vec2<f32>,
+    // outline_width: f32
+    // outline_offset: f32
+    @location(7) outline_color: vec4<f32>,
+    @location(8) filters: vec4<f32>,
+    // brightness: f32,
+    // saturate: f32,
+    // contrast: f32,
+    // invert: f32,
+    @location(9) grayscale: f32,
+    @location(10) scale: vec2<f32>,
 }
+
 
 @vertex
 fn vs_main(
     model: VertexInput,
     instance: InstanceInput,
 ) -> VertexOutput {
+    let outline_width = vec2<f32>(instance.outline.x, instance.outline.x) * instance.scale;
+    let outline_offset = vec2<f32>(instance.outline.y, instance.outline.y) * instance.scale;
+
     var out: VertexOutput;
 
-    let position = model.position * instance.dimensions.zw + instance.dimensions.xy;
+    let scaled_dimensions = vec4<f32>(
+        instance.dimensions.xy * instance.scale,
+        instance.dimensions.zw * instance.scale
+    );
+    let position = model.position * scaled_dimensions.zw + scaled_dimensions.xy;
     out.clip_position = projection.projection * vec4<f32>(position, 0.0, 1.0);
-    
+
     out.uv = position;
     out.rect_color = instance.rect_color;
-    out.rect_dim = vec4<f32>(instance.dimensions.xy
-		   + vec2<f32>(instance.border_size.x, instance.border_size.y) 
-		   + vec2<f32>(instance.outline_width + instance.outline_offset),
-		     instance.dimensions.zw
-		    - vec2<f32>(instance.border_size.x + instance.border_size.z, instance.border_size.y + instance.border_size.w)
-		    - vec2<f32>(instance.outline_width * 2 + instance.outline_offset * 2)
-);
-    
-    out.border_radius = instance.border_radius;
-    out.border_size = instance.border_size;
+    out.rect_dim = vec4<f32>(
+        scaled_dimensions.xy 
+        + vec2<f32>(instance.border_size.x, instance.border_size.y) * instance.scale
+        + vec2<f32>(outline_width + outline_offset),
+        scaled_dimensions.zw 
+        - vec2<f32>(
+            (instance.border_size.x + instance.border_size.z) * instance.scale.x, 
+            (instance.border_size.y + instance.border_size.w) * instance.scale.y
+        )
+        - vec2<f32>(outline_width * 2 + outline_offset * 2)
+    );
+    out.border_radius = instance.border_radius * vec4<f32>(instance.scale, instance.scale);
+    out.border_size = vec4<f32>(instance.border_size.xy, instance.border_size.zw) * vec4<f32>(instance.scale, instance.scale);
     out.border_color = instance.border_color;
-    out.outline_width = instance.outline_width;
-    out.outline_offset = instance.outline_offset;
+    out.outline = vec4<f32>(outline_width, outline_offset);
     out.outline_color = instance.outline_color;
-    out.boxshadow_offset = instance.boxshadow_offset;
-    out.boxshadow_softness = instance.boxshadow_softness;
-    out.boxshadow_color = instance.boxshadow_color;
-    out.brightness = instance.brightness;
-    out.saturate = instance.saturate;
-    out.contrast = instance.contrast;
-    out.invert = instance.invert;
+    out.filters = instance.filters;
+    out.grayscale = instance.grayscale;
 
     return out;
 }
@@ -136,6 +141,14 @@ fn saturation_matrix(saturation: f32) -> mat4x4<f32> {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let outline_width = in.outline.xy;
+    let outline_offset = in.outline.zw;
+
+    let brightness = in.filters[0];
+    let saturate = in.filters[1];
+    let contrast = in.filters[2];
+    let invert = in.filters[3];
+
     var pos: vec2<f32> = in.rect_dim.xy;
     var size: vec2<f32> = in.rect_dim.zw;
     var dist: f32 = sdf_rounded_rect(
@@ -161,18 +174,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	dist = border_dist;
     }
 
-   // if (in.boxshadow_offset.x != 0 || in.boxshadow_offset.y != 0) {
-   //     let shadow_distance = sdf_rounded_rect(in.uv - pos + in.boxshadow_offset - (size / 2.0), size / 2.0, in.border_radius);
-   // 	let shadow_alpha = 1.0 - smoothstep(-in.boxshadow_softness, in.boxshadow_softness, shadow_distance);
-   // 	let border_alpha = 1.0 - smoothstep(0.0, 2.0, dist);
-   // 	let quadColor = mix(vec4<f32>(0.0, 0.0, 0.0, 0.0), color, border_alpha);
-   // 	color = mix(quadColor, in.boxshadow_color, shadow_alpha - border_alpha);
-   //     dist = shadow_distance;
-   // }
-
-    if (in.outline_offset > 0.0) {
-        size += vec2<f32>(in.outline_offset) * 2.0;
-    	pos -= vec2<f32>(in.outline_offset);
+    if (outline_offset.x > 0.0 || outline_offset.y > 0.0) {
+        size += outline_offset * 2.0;
+    	pos -= outline_offset;
         color = mix(color, vec4<f32>(0.0), smoothstep(0.0, 1.0, dist));
     	dist = sdf_rounded_rect(
     	    in.uv - pos - (size / 2.0),
@@ -181,9 +185,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     	);
     }
 
-    if (in.outline_width > 0.0) {
-        size += vec2<f32>(in.outline_width) * 2.0;
-    	pos -= vec2<f32>(in.outline_width);
+    if (outline_width.x > 0.0 || outline_width.y > 0.0) {
+        size += outline_width * 2.0;
+    	pos -= outline_width;
     	let outline_dist = sdf_rounded_rect(
     	    in.uv - pos - (size / 2.0),
     	    size / 2.0,
@@ -196,7 +200,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         dist = outline_dist;
     }
 
-    color = brightness_matrix(in.brightness) * contrast_matrix(in.contrast) * saturation_matrix(in.saturate) * color;
+    color = brightness_matrix(brightness) * contrast_matrix(contrast) * saturation_matrix(saturate) * color;
 
-    return vec4<f32>(mix(color.rgb, vec3<f32>(1.0) - color.rgb, in.invert), color.a);
+    return vec4<f32>(mix(color.rgb, vec3<f32>(1.0) - color.rgb, invert), color.a);
 }
