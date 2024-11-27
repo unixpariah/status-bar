@@ -71,6 +71,7 @@ pub struct Rectangle {
     scale: [f32; 2],
     rotate: f32,
     skew: [f32; 2],
+    translate: [f32; 2],
 }
 
 pub struct Extents {
@@ -180,6 +181,9 @@ impl Rectangle {
             filter: [self.brightness, self.saturate, self.contrast, self.invert],
             grayscale: self.grayscale,
             scale: self.scale,
+            rotation: self.rotate,
+            translate: self.translate,
+            skew: self.skew,
         }
     }
 }
@@ -208,6 +212,7 @@ impl Default for Rectangle {
             scale: [1.0, 1.0],
             rotate: 0.0,
             skew: [0.0, 0.0],
+            translate: [0.0, 0.0],
         }
     }
 }

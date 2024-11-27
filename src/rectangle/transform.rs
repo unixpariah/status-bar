@@ -1,11 +1,5 @@
 use super::Rectangle;
 
-// Name              | Implemented by Struct | Implemented by Shader
-// ------------------|-----------------------|-----------------------
-// scale             | [x]                   | [x]
-// skew              | [x]                   | [ ]
-// rotate            | [x]                   | [ ]
-
 impl Rectangle {
     pub fn set_scale(&mut self, x: f32, y: f32) -> &mut Self {
         self.scale = [x, y];
@@ -19,6 +13,11 @@ impl Rectangle {
 
     pub fn set_rotate(&mut self, rotation: f32) -> &mut Self {
         self.rotate = rotation;
+        self
+    }
+
+    pub fn set_translate(&mut self, translate: [f32; 2]) -> &mut Self {
+        self.translate = translate;
         self
     }
 }

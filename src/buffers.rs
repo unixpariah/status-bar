@@ -109,10 +109,13 @@ pub struct Instance {
     pub filter: [f32; 4],
     pub grayscale: f32,
     pub scale: [f32; 2],
+    pub rotation: f32,
+    pub translate: [f32; 2],
+    pub skew: [f32; 2],
 }
 
 impl Instance {
-    const ATTRIBS: [wgpu::VertexAttribute; 10] = wgpu::vertex_attr_array![
+    const ATTRIBS: [wgpu::VertexAttribute; 13] = wgpu::vertex_attr_array![
         1 => Float32x4,
         2 => Float32x4,
         3 => Float32x4,
@@ -123,6 +126,9 @@ impl Instance {
         8 => Float32x4,
         9 => Float32,
         10 => Float32x2,
+        11 => Float32,
+        12 => Float32x2,
+        13 => Float32x2
     ];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {

@@ -12,6 +12,8 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) rect_dim: vec4<f32>,
+    // rect_pos: vec2<f32>
+    // rect_size: vec2<f32>
     @location(2) rect_color: vec4<f32>,
     @location(3) border_radius: vec4<f32>,
     @location(4) border_size: vec4<f32>,
@@ -45,25 +47,45 @@ struct InstanceInput {
     // invert: f32,
     @location(9) grayscale: f32,
     @location(10) scale: vec2<f32>,
+    @location(11) rotation: f32,
+    @location(12) translate: vec2<f32>,
+    @location(13) skew: vec2<f32>,
 }
 
+fn rotation_matrix(angle: f32) -> mat2x2<f32> {
+    let angle_inner = angle * 3.14159265359 / 180.0;
+
+    let sinTheta = sin(angle_inner);
+    let cosTheta = cos(angle_inner);
+    return mat2x2<f32>(
+        cosTheta, -sinTheta,
+        sinTheta, cosTheta
+    );
+}
+
+fn skew_matrix(skewX: f32, skewY: f32) -> mat2x2<f32> {
+    return mat2x2<f32>(
+        vec2<f32>(1.0, skewY * 3.14159265359 / 180.0),
+        vec2<f32>(skewX * 3.14159265359 / 180.0, 1.0)
+    );
+}
 
 @vertex
 fn vs_main(
     model: VertexInput,
     instance: InstanceInput,
 ) -> VertexOutput {
+    var out: VertexOutput;
+
     let outline_width = vec2<f32>(instance.outline.x, instance.outline.x) * instance.scale;
     let outline_offset = vec2<f32>(instance.outline.y, instance.outline.y) * instance.scale;
 
-    var out: VertexOutput;
-
     let scaled_dimensions = vec4<f32>(
-        instance.dimensions.xy * instance.scale,
+        (instance.dimensions.xy + instance.translate) * instance.scale,
         instance.dimensions.zw * instance.scale
     );
     let position = model.position * scaled_dimensions.zw + scaled_dimensions.xy;
-    out.clip_position = projection.projection * vec4<f32>(position, 0.0, 1.0);
+    out.clip_position = projection.projection * vec4<f32>(position * rotation_matrix(instance.rotation) * skew_matrix(instance.skew.x, instance.skew.y), 0.0, 1.0);
 
     out.uv = position;
     out.rect_color = instance.rect_color;

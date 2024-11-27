@@ -6,13 +6,11 @@ use super::Rectangle;
 // blur              | [x]                   | [ ]
 // brightness        | [x]                   | [x]
 // contrast          | [x]                   | [x]
-// grayscale         | [x]                   | [ ]
+// grayscale         | [x]                   | [x]
 // invert            | [x]                   | [x]
 // sepia             | [x]                   | [ ]
 // saturate          | [x]                   | [x]
 // hue-rotate        | [x]                   | [ ]
-// scale             | [x]                   | [x]
-// skew              | [x]                   | [ ]
 
 impl Rectangle {
     pub fn set_sepia(&mut self, sepia: f32) -> &mut Self {
