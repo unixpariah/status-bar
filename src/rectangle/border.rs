@@ -67,7 +67,7 @@ impl Default for Border {
 }
 
 impl Rectangle {
-    pub fn set_border_size(&mut self, top: f32, right: f32, bottom: f32, left: f32) -> &mut Self {
+    pub fn set_border_size(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Self {
         self.border.size = BorderSize {
             top,
             right,
@@ -77,23 +77,23 @@ impl Rectangle {
         self
     }
 
-    pub fn set_border_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
+    pub fn set_border_color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
         self.border.color = [r, g, b, a];
         self
     }
 
-    pub fn set_border_style(&mut self, style: BorderStyle) -> &mut Self {
+    pub fn set_border_style(mut self, style: BorderStyle) -> Self {
         self.border.style = style;
         self
     }
 
     pub fn set_border_radius(
-        &mut self,
+        mut self,
         top_left: f32,
         top_right: f32,
         bottom_right: f32,
         bottom_left: f32,
-    ) -> &mut Self {
+    ) -> Self {
         self.border.radius = BorderRadius {
             top_left,
             top_right,

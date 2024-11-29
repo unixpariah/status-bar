@@ -11,7 +11,7 @@ pub struct Surface {
     pub layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     pub surface: wl_surface::WlSurface,
     pub config: config::Config,
-    pub rectangle: Rectangle,
+    pub background: Rectangle,
 }
 
 impl Surface {
@@ -29,15 +29,12 @@ impl Surface {
         layer_surface.set_anchor(Anchor::Top);
         surface.commit();
 
-        let mut rectangle = Rectangle::default();
-        rectangle.set_border_radius(10.0, 10.0, 10.0, 10.0);
-
         let mut surface = Self {
             wgpu: wgpu_surface::WgpuSurface::new(&surface, raw_display_handle, instance),
             layer_surface,
             surface,
             config,
-            rectangle,
+            background: Rectangle::default(),
         };
 
         surface.apply_config();
@@ -46,7 +43,8 @@ impl Surface {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.rectangle.set_size(width as f32, height as f32);
+        let background = std::mem::take(&mut self.background);
+        self.background = background.set_size(width as f32, height as f32);
 
         self.wgpu.resize(width, height);
         self.wgpu.projection_uniform = buffers::ProjectionUniform::new(
@@ -78,8 +76,8 @@ impl Surface {
         );
 
         let color = self.config.background_color;
-        self.rectangle
-            .set_background_color(color[0], color[1], color[2], color[3]);
+        let background = std::mem::take(&mut self.background);
+        self.background = background.set_background_color(color[0], color[1], color[2], color[3]);
     }
 }
 

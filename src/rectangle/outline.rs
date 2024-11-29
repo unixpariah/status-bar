@@ -32,22 +32,22 @@ impl Default for Outline {
 }
 
 impl Rectangle {
-    pub fn set_outline_width(&mut self, width: f32) -> &mut Self {
+    pub fn set_outline_width(mut self, width: f32) -> Self {
         self.outline.width = width;
         self
     }
 
-    pub fn set_outline_offset(&mut self, offset: f32) -> &mut Self {
+    pub fn set_outline_offset(mut self, offset: f32) -> Self {
         self.outline.offset = offset;
         self
     }
 
-    pub fn set_outline_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
+    pub fn set_outline_color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
         self.outline.color = [r, g, b, a];
         self
     }
 
-    pub fn set_outline_style(&mut self, style: OutlineStyle) -> &mut Self {
+    pub fn set_outline_style(mut self, style: OutlineStyle) -> Self {
         self.outline.style = style;
         self
     }

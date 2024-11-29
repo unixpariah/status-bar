@@ -82,40 +82,40 @@ pub struct Extents {
 }
 
 impl Rectangle {
-    pub fn set_coordinates(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn set_coordinates(mut self, x: f32, y: f32) -> Self {
         self.x = x;
         self.y = y;
         self
     }
 
-    pub fn set_boxshadow_offset(&mut self, x_offset: f32, y_offset: f32) -> &mut Self {
+    pub fn set_boxshadow_offset(mut self, x_offset: f32, y_offset: f32) -> Self {
         self.box_shadow.x_offset = x_offset;
         self.box_shadow.y_offset = y_offset;
         self
     }
 
-    pub fn set_boxshadow_softness(&mut self, softness: f32) -> &mut Self {
+    pub fn set_boxshadow_softness(mut self, softness: f32) -> Self {
         self.box_shadow.softness = softness;
         self
     }
 
-    pub fn set_boxshadow_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
+    pub fn set_boxshadow_color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
         self.box_shadow.color = [r, g, b, a];
         self
     }
 
-    pub fn set_size(&mut self, width: f32, height: f32) -> &mut Self {
+    pub fn set_size(mut self, width: f32, height: f32) -> Self {
         self.width = width;
         self.height = height;
         self
     }
 
-    pub fn set_box_sizing(&mut self, box_sizing: BoxSizing) -> &mut Self {
+    pub fn set_box_sizing(mut self, box_sizing: BoxSizing) -> Self {
         self.box_sizing = box_sizing;
         self
     }
 
-    pub fn set_padding(&mut self, top: f32, right: f32, bottom: f32, left: f32) -> &mut Self {
+    pub fn set_padding(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Self {
         self.padding = PaddingSize {
             top,
             right,
@@ -125,8 +125,8 @@ impl Rectangle {
         self
     }
 
-    pub fn set_background_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self {
-        self.background_color = [r * a, g * a, b * a, a];
+    pub fn set_background_color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.background_color = [r, g, b, a];
         self
     }
 
@@ -170,9 +170,11 @@ impl Rectangle {
         // TODO: calculate size of shadow and get max of either outline width + outline.offset or
         // the calculated shadow (cant just take offset as blurring kind makes it different size)
 
+        let c = self.background_color;
+
         buffers::Instance {
             dimensions: [x, y, width, height],
-            color: self.background_color,
+            color: [c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3]], // Premultiply colors
             border_radius: self.border.radius.to_array(),
             border_size: self.border.size.to_array(),
             border_color: self.border.color,

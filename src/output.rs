@@ -11,7 +11,7 @@ use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_v1;
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1;
 
 pub struct OutputInfo {
-    name: String,
+    name: Option<String>,
     width: i32,
     height: i32,
     scale: i32,
@@ -21,7 +21,7 @@ pub struct OutputInfo {
 impl OutputInfo {
     fn new(id: u32) -> Self {
         Self {
-            name: "".to_string(),
+            name: None,
             width: 0,
             height: 0,
             scale: 1,
@@ -110,7 +110,7 @@ impl Output {
         );
         render_pass.set_vertex_buffer(0, rect_buf.slice(..));
 
-        let instance = self.surface.rectangle.get_instance();
+        let instance = self.surface.background.get_instance();
         let instance_two = Rectangle::default()
             .set_background_color(0.0, 0.0, 1.0, 1.0)
             .set_size(100.0, 100.0)
@@ -194,7 +194,7 @@ impl Dispatch<zxdg_output_v1::ZxdgOutputV1, ()> for StatusBar {
             .unwrap(); // Can't be called if this xdg_output wasn't created
 
         match event {
-            zxdg_output_v1::Event::Name { name } => output.info.name = name,
+            zxdg_output_v1::Event::Name { name } => output.info.name = Some(name),
             zxdg_output_v1::Event::LogicalSize { width, height } => {
                 output.info.width = width;
                 output.info.height = height;
