@@ -1,4 +1,5 @@
 mod surface;
+mod tree;
 
 use crate::{buffers, rectangle::Rectangle, StatusBar};
 use raw_window_handle::RawDisplayHandle;
@@ -57,7 +58,7 @@ impl Output {
         }
     }
 
-    pub fn render(&self) {
+    pub fn render(&mut self) {
         let surface_texture = self
             .surface
             .wgpu
@@ -91,86 +92,12 @@ impl Output {
         render_pass.set_pipeline(&self.surface.wgpu.render_pipeline);
         render_pass.set_bind_group(0, &self.surface.wgpu.projection_uniform.bind_group, &[]);
 
-        let rect_buf = buffers::VertexBuffer::new(
+        self.surface.background.render(
             &self.surface.wgpu.device,
-            &[
-                buffers::Vertex {
-                    position: [0.0, 1.0],
-                },
-                buffers::Vertex {
-                    position: [1.0, 1.0],
-                },
-                buffers::Vertex {
-                    position: [1.0, 0.0],
-                },
-                buffers::Vertex {
-                    position: [0.0, 0.0],
-                },
-            ],
+            &mut render_pass,
+            &self.surface.wgpu.index_buffer,
         );
-        render_pass.set_vertex_buffer(0, rect_buf.slice(..));
 
-        let instance = self.surface.background.get_instance();
-        let instance_two = Rectangle::default()
-            .set_background_color(0.0, 0.0, 1.0, 1.0)
-            .set_size(100.0, 100.0)
-            .set_coordinates(100.0, 700.0)
-            .set_border_radius(0.0, 10.0, 30.0, 50.0)
-            .set_border_color(1.0, 1.0, 1.0, 1.0)
-            .set_border_size(2.0, 2.0, 2.0, 2.0)
-            .get_instance();
-
-        let instance_three = Rectangle::default()
-            .set_background_color(1.0, 0.0, 0.0, 1.0)
-            .set_size(300.0, 300.0)
-            .set_coordinates(200.0, 100.0)
-            .set_border_radius(10.0, 10.0, 10.0, 10.0)
-            .get_instance();
-
-        let instance_four = Rectangle::default()
-            .set_background_color(0.0, 1.0, 0.0, 1.0)
-            .set_size(100.0, 100.0)
-            .set_coordinates(10.0, 100.0)
-            .set_border_radius(55.0, 55.0, 55.0, 55.0)
-            .set_boxshadow_offset(0.0, 10.0)
-            .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
-            .set_boxshadow_softness(30.0)
-            .get_instance();
-
-        let instance_five = Rectangle::default()
-            .set_background_color(0.0, 1.0, 0.0, 1.0)
-            .set_size(100.0, 100.0)
-            .set_coordinates(100.0, 500.0)
-            .set_border_radius(10.0, 10.0, 10.0, 10.0)
-            .set_border_size(0.0, 5.0, 10.0, 15.0)
-            .set_border_color(1.0, 1.0, 0.0, 1.0)
-            .set_outline_width(5.0)
-            .set_outline_color(1.0, 0.0, 0.0, 1.0)
-            .set_outline_offset(50.0)
-            .set_boxshadow_offset(0.0, 10.0)
-            .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
-            .set_boxshadow_softness(30.0)
-            .get_instance();
-
-        let instances: Vec<_> = vec![
-            instance,
-            instance_two,
-            instance_three,
-            instance_four,
-            instance_five,
-        ];
-        let instance_buffer = buffers::InstanceBuffer::new(&self.surface.wgpu.device, &instances);
-        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
-
-        render_pass.set_index_buffer(
-            self.surface.wgpu.index_buffer.slice(..),
-            wgpu::IndexFormat::Uint16,
-        );
-        render_pass.draw_indexed(
-            0..self.surface.wgpu.index_buffer.size(),
-            0,
-            0..instance_buffer.size(),
-        );
         drop(render_pass); // Drop renderpass and release mutable borrow on encoder
 
         self.surface.wgpu.queue.submit(Some(encoder.finish()));

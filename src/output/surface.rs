@@ -6,12 +6,14 @@ use raw_window_handle::RawDisplayHandle;
 use wayland_client::{protocol::wl_surface, Connection, Dispatch, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::{self, Anchor};
 
+use super::tree;
+
 pub struct Surface {
     pub wgpu: wgpu_surface::WgpuSurface,
     pub layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     pub surface: wl_surface::WlSurface,
     pub config: config::Config,
-    pub background: Rectangle,
+    pub background: tree::Tree,
 }
 
 impl Surface {
@@ -34,17 +36,78 @@ impl Surface {
             layer_surface,
             surface,
             config,
-            background: Rectangle::default(),
+            background: tree::Tree::new(Rectangle::default()),
         };
 
         surface.apply_config();
+
+        surface.background.add_child(
+            Rectangle::default()
+                .set_background_color(0.0, 0.0, 1.0, 1.0)
+                .set_size(100.0, 100.0)
+                .set_coordinates(100.0, 700.0)
+                .set_border_radius(0.0, 10.0, 30.0, 50.0)
+                .set_border_color(1.0, 1.0, 1.0, 1.0)
+                .set_border_size(2.0, 2.0, 2.0, 2.0),
+        );
+
+        surface.background.add_child(
+            Rectangle::default()
+                .set_background_color(1.0, 0.0, 0.0, 1.0)
+                .set_size(300.0, 300.0)
+                .set_coordinates(200.0, 100.0)
+                .set_border_radius(10.0, 10.0, 10.0, 10.0),
+        );
+
+        surface.background.add_child(
+            Rectangle::default()
+                .set_background_color(0.0, 1.0, 0.0, 1.0)
+                .set_size(100.0, 100.0)
+                .set_coordinates(10.0, 100.0)
+                .set_border_radius(55.0, 55.0, 55.0, 55.0)
+                .set_boxshadow_offset(0.0, 10.0)
+                .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
+                .set_boxshadow_softness(30.0),
+        );
+
+        surface.background.add_child(
+            Rectangle::default()
+                .set_background_color(0.0, 1.0, 0.0, 1.0)
+                .set_size(100.0, 100.0)
+                .set_coordinates(100.0, 500.0)
+                .set_border_radius(10.0, 10.0, 10.0, 10.0)
+                .set_border_size(0.0, 5.0, 10.0, 15.0)
+                .set_border_color(1.0, 1.0, 0.0, 1.0)
+                .set_outline_width(5.0)
+                .set_outline_color(1.0, 0.0, 0.0, 1.0)
+                .set_outline_offset(50.0)
+                .set_boxshadow_offset(0.0, 10.0)
+                .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
+                .set_boxshadow_softness(30.0),
+        );
+
+        surface.background.add_child(
+            Rectangle::default()
+                .set_background_color(0.0, 1.0, 0.0, 1.0)
+                .set_size(100.0, 100.0)
+                .set_coordinates(100.0, 500.0)
+                .set_border_radius(10.0, 10.0, 10.0, 10.0)
+                .set_border_size(0.0, 5.0, 10.0, 15.0)
+                .set_border_color(1.0, 1.0, 0.0, 1.0)
+                .set_outline_width(5.0)
+                .set_outline_color(1.0, 0.0, 0.0, 1.0)
+                .set_outline_offset(50.0)
+                .set_boxshadow_offset(0.0, 10.0)
+                .set_boxshadow_color(1.0, 1.0, 0.0, 1.0)
+                .set_boxshadow_softness(30.0),
+        );
 
         surface
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        let background = std::mem::take(&mut self.background);
-        self.background = background.set_size(width as f32, height as f32);
+        let background = std::mem::take(&mut self.background.data);
+        self.background.data = background.set_size(width as f32, height as f32);
 
         self.wgpu.resize(width, height);
         self.wgpu.projection_uniform = buffers::ProjectionUniform::new(
@@ -76,8 +139,9 @@ impl Surface {
         );
 
         let color = self.config.background_color;
-        let background = std::mem::take(&mut self.background);
-        self.background = background.set_background_color(color[0], color[1], color[2], color[3]);
+        let background = std::mem::take(&mut self.background.data);
+        self.background.data =
+            background.set_background_color(color[0], color[1], color[2], color[3]);
     }
 }
 

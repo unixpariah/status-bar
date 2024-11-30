@@ -13,15 +13,6 @@ impl Tree {
         }
     }
 
-    pub fn add_child(&mut self, rectangle: rectangle::Rectangle) {
-        let node = Node {
-            data: rectangle,
-            children: Vec::new(),
-        };
-
-        self.children.push(node);
-    }
-
     pub fn render(
         &self,
         device: &wgpu::Device,
@@ -48,15 +39,10 @@ impl Tree {
 
         render_pass.set_vertex_buffer(0, rect_buf.slice(..));
 
-        let mut indices = self
-            .children
-            .iter()
-            .map(|node| node.data.get_instance())
-            .collect::<Vec<buffers::Instance>>();
+        let mut instances = Vec::new();
+        self.collect_instances(&mut instances);
 
-        indices.push(self.data.get_instance());
-
-        let instance_buffer = buffers::InstanceBuffer::new(device, &indices);
+        let instance_buffer = buffers::InstanceBuffer::new(device, &instances);
         render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
 
         render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
@@ -89,5 +75,22 @@ impl Node {
             data: rectangle,
             children: Vec::new(),
         };
+    }
+
+    pub fn add_child(&mut self, rectangle: rectangle::Rectangle) {
+        let node = Node {
+            data: rectangle,
+            children: Vec::new(),
+        };
+
+        self.children.push(node);
+    }
+
+    fn collect_instances(&self, instances: &mut Vec<buffers::Instance>) {
+        instances.push(self.data.get_instance());
+
+        self.children
+            .iter()
+            .for_each(|child| child.collect_instances(instances));
     }
 }

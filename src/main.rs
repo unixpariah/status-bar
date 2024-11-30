@@ -37,8 +37,8 @@ impl StatusBar {
         }
     }
 
-    fn render(&self) {
-        self.outputs.iter().for_each(|output| output.render());
+    fn render(&mut self) {
+        self.outputs.iter_mut().for_each(|output| output.render());
     }
 }
 
